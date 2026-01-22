@@ -229,6 +229,40 @@ class DigitalHumanRenderer:
         # Professional Styling (Cyan Neon Theme)
         self.node_spec = self.mp_drawing.DrawingSpec(color=(248, 189, 56), thickness=2, circle_radius=2)
         self.link_spec = self.mp_drawing.DrawingSpec(color=(56, 189, 248), thickness=3)
+        
+        # User Photo Integration
+        self.user_face = self._extract_user_face()
+
+    def _extract_user_face(self):
+        """Extracts and crops the user's face from user_profile.png if available"""
+        path = os.path.join(os.path.dirname(__file__), "user_profile.png")
+        if not os.path.exists(path): return None
+        try:
+            img = cv2.imread(path)
+            if img is None: return None
+            
+            # Intelligent Center Crop (assuming the head is in the top-middle)
+            h, w = img.shape[:2]
+            # We take a square crop based on the smaller dimension
+            size = min(h, w)
+            # Offset center slightly up for profile photos (usually head is top-ish)
+            start_x = (w - size) // 2
+            start_y = max(0, (h - size) // 2 - int(h * 0.1)) # Shift up by 10%
+            
+            crop = img[start_y:start_y+size, start_x:start_x+size]
+            radius = size // 2
+            
+            # Create Circular Mask
+            mask = np.zeros((size, size), dtype=np.uint8)
+            cv2.circle(mask, (radius, radius), radius, 255, -1)
+            
+            # Add Alpha Channel
+            face_rgba = cv2.cvtColor(crop, cv2.COLOR_BGR2BGRA)
+            face_rgba[:, :, 3] = mask
+            return cv2.resize(face_rgba, (140, 140)) # Slightly larger for better detail
+        except Exception as e:
+            print(f"⚠️ Face Extraction Failed: {e}")
+            return None
 
     def render_landmark_dna(self, landmark_sequence, output_path, width=640, height=480, fps=30):
         """Renders raw landmarks into a stylized digital human video clip (Skeletal Mode)"""
@@ -294,21 +328,36 @@ class DigitalHumanRenderer:
                 tie_poly = np.array([neck_center, (neck_center[0]-5, neck_center[1]+10), tie_tip, (neck_center[0]+5, neck_center[1]+10)], np.int32)
                 cv2.fillPoly(canvas, [tie_poly], (56, 189, 248)) 
                 
-                # Head
+                # Head (If user photo exists, use it! Otherwise use Geometric)
                 p_nose = get_p(0 + 42)
-                cv2.circle(canvas, p_nose, 40, (226, 232, 240), -1) # Skin tone-ish
-                cv2.circle(canvas, p_nose, 40, (241, 245, 249), 2)
-                
-                # Eyes (Pose 2 and 5 are approx eyes)
-                p_l_eye = get_p(2 + 42)
-                p_r_eye = get_p(5 + 42)
-                cv2.circle(canvas, p_l_eye, 3, (15, 23, 42), -1)
-                cv2.circle(canvas, p_r_eye, 3, (15, 23, 42), -1)
-                
-                # Mouth (Pose 9 and 10)
-                p_l_mouth = get_p(9 + 42)
-                p_r_mouth = get_p(10 + 42)
-                cv2.line(canvas, p_l_mouth, p_r_mouth, (15, 23, 42), 2)
+                if self.user_face is not None:
+                    # Overlay User Face
+                    fw, fh = self.user_face.shape[1], self.user_face.shape[0]
+                    y1, y2 = p_nose[1]-fh//2, p_nose[1]+fh//2
+                    x1, x2 = p_nose[0]-fw//2, p_nose[0]+fw//2
+                    
+                    if y1 >= 0 and y2 < height and x1 >= 0 and x2 < width:
+                        overlay = self.user_face[:, :, :3]
+                        mask = self.user_face[:, :, 3] / 255.0
+                        for c in range(3):
+                            canvas[y1:y2, x1:x2, c] = (1 - mask) * canvas[y1:y2, x1:x2, c] + mask * overlay[:, :, c]
+                    # White Border for head
+                    cv2.circle(canvas, p_nose, fh//2, (241, 245, 249), 2)
+                else:
+                    cv2.circle(canvas, p_nose, 40, (226, 232, 240), -1) # Geometric skin tone
+                    cv2.circle(canvas, p_nose, 40, (241, 245, 249), 2)
+                    
+                # Eyes (Only if no photo)
+                if self.user_face is None:
+                    p_l_eye = get_p(2 + 42)
+                    p_r_eye = get_p(5 + 42)
+                    cv2.circle(canvas, p_l_eye, 3, (15, 23, 42), -1)
+                    cv2.circle(canvas, p_r_eye, 3, (15, 23, 42), -1)
+                    
+                    # Mouth
+                    p_l_mouth = get_p(9 + 42)
+                    p_r_mouth = get_p(10 + 42)
+                    cv2.line(canvas, p_l_mouth, p_r_mouth, (15, 23, 42), 2)
             except: pass
 
             # 2. Draw Limbs
