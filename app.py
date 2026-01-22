@@ -461,10 +461,9 @@ def main():
                            // Note: Depending on hand side, this cross might point Up or Down relative to Palm.
                            // Left Hand: Dir(+X), Width(-Y). Cross(X, -Y) = -Z. (Correct)
                            // Right Hand: Dir(-X), Width(-Y). Cross(-X, -Y) = +Z. (Backwards to -Z).
-                           // We will adjust based on side.
-                           
+                           // However, if we negate it, we might be flipping it 180 wrong if the skeleton expects +Z.
+                           // Let's TRY natural direction first, removing the hard flip.
                            const targetPalm = new THREE.Vector3().crossVectors(vDir, vWidth).normalize();
-                           if (side === 'right') targetPalm.negate(); // Flip Right Hand to match standard -Z forward face
                            
                            // Calculate "Current" Palm Normal after Swing
                            // (Start with Default Palm -Z and rotate it by qSwing)
@@ -480,48 +479,56 @@ def main():
                            node.quaternion.slerp(qFinal, 0.6);
                         }}
 
+                        const fps = 30;
+                        const timePerFrame = 1.0 / fps;
+                        let timeAccumulator = 0.0;
+
                         function animate() {{
                             requestAnimationFrame(animate);
+                            
+                            const delta = clock.getDelta();
+                            timeAccumulator += delta;
+                            
                             if (vrm) {{
-                                vrm.update(clock.getDelta());
+                                vrm.update(delta); // Update physics/blink logic at high freq
                                 
-                                if (DNA.length > 0) {{
+                                // Lock Pose Updates to 30 FPS to match Video Speed
+                                if (DNA.length > 0 && timeAccumulator >= timePerFrame) {{
+                                    timeAccumulator %= timePerFrame; // Reset accumulator safely
+                                    
                                     const frame = DNA[frameIdx];
                                     if (frame && frame.pose) {{
                                         const pose = frame.pose;
                                         
-                                        // Helper Wrapper for Arrays (Handle native JSON format)
-                                        // Returns [x, y, z] to match solveBoneRotation expectation
+                                        // Helper Wrapper for Arrays
                                         const getPoseLM = (idx) => (pose.length > idx*3) ? [pose[idx*3], pose[idx*3+1], pose[idx*3+2]] : [0,0,0];
                                         const getLeftHandLM = (idx) => (frame.left_hand && frame.left_hand.length > idx*3) ? [frame.left_hand[idx*3], frame.left_hand[idx*3+1], frame.left_hand[idx*3+2]] : null;
                                         const getRightHandLM = (idx) => (frame.right_hand && frame.right_hand.length > idx*3) ? [frame.right_hand[idx*3], frame.right_hand[idx*3+1], frame.right_hand[idx*3+2]] : null;
 
                                         // --- RIGGING LOGIC ---
                                         
-                                        // 1. Left Arm Chain (VRM Standard: Left Arm points +X)
+                                        // 1. Left Arm Chain (VRM: +X)
                                         const leftArm = vrm.humanoid.getNormalizedBoneNode('leftUpperArm');
                                         const leftForeArm = vrm.humanoid.getNormalizedBoneNode('leftLowerArm');
                                         const leftHand = vrm.humanoid.getNormalizedBoneNode('leftHand');
                                         
-                                        // Base Direction: Left Arm = (1, 0, 0)
                                         solveBoneRotation(leftArm, getPoseLM(11), getPoseLM(13), new THREE.Vector3(1, 0, 0));
                                         solveBoneRotation(leftForeArm, getPoseLM(13), getPoseLM(15), new THREE.Vector3(1, 0, 0));
                                         
-                                        // Left Hand Twist: 0(Wrist), 5(Index), 9(Middle), 17(Pinky)
                                         if (leftHand && frame.left_hand && frame.left_hand.length > 0) {{ 
                                             solveHandOrientation(leftHand, getLeftHandLM(0), getLeftHandLM(5), getLeftHandLM(9), getLeftHandLM(17), 'left');
                                         }}
 
-                                        // 2. Right Arm Chain (VRM Standard: Right Arm points -X)
+                                        // 2. Right Arm Chain (VRM: -X)
                                         const rightArm = vrm.humanoid.getNormalizedBoneNode('rightUpperArm');
                                         const rightForeArm = vrm.humanoid.getNormalizedBoneNode('rightLowerArm');
                                         const rightHand = vrm.humanoid.getNormalizedBoneNode('rightHand');
 
-                                        // Base Direction: Right Arm = (-1, 0, 0)
                                         solveBoneRotation(rightArm, getPoseLM(12), getPoseLM(14), new THREE.Vector3(-1, 0, 0));
                                         solveBoneRotation(rightForeArm, getPoseLM(14), getPoseLM(16), new THREE.Vector3(-1, 0, 0));
                                         
-                                        if (rightHand && frame.right_hand) {{
+                                        // Update: Right hand checks both presence and length
+                                        if (rightHand && frame.right_hand && frame.right_hand.length > 0) {{
                                              solveHandOrientation(rightHand, getRightHandLM(0), getRightHandLM(5), getRightHandLM(9), getRightHandLM(17), 'right');
                                         }}
                                         
