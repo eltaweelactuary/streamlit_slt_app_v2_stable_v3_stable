@@ -257,6 +257,7 @@ def main():
         if gen_btn and text_input:
             with st.spinner("🧪 Transforming to Digital Avatar..."):
                 words = text_input.lower().split()
+                st.session_state['last_words'] = words
                 v_clips = []
                 dna_list = []
                 
@@ -280,134 +281,143 @@ def main():
                 
                 if v_clips:
                     full_dna = renderer.stitch_landmarks(dna_list)
+                    # Store in session state for persistence
+                    st.session_state['v_clips'] = v_clips
+                    st.session_state['full_dna'] = full_dna
+                    st.session_state['dna_list'] = dna_list
                     
-                    st.divider()
-                    cinema_mode = st.toggle("🎭 Activate Cinema Mode (3D ReadyPlayerMe Bridge)", value=False)
+        # Use session state to display results (persists across Cinema Mode toggle)
+        if 'v_clips' in st.session_state and st.session_state['v_clips']:
+            v_clips = st.session_state['v_clips']
+            full_dna = st.session_state.get('full_dna')
+            dna_list = st.session_state.get('dna_list', [])
+            words = st.session_state.get('last_words', [])
+            
+            st.divider()
+            cinema_mode = st.toggle("🎭 Activate Cinema Mode (3D ReadyPlayerMe Bridge)", value=False)
+            
+            if cinema_mode:
+                st.markdown("### 🎬 Cinema Mode: High-Fidelity 3D Avatar")
+                dna_json = core.get_words_dna_json(words)
+                if dna_json:
+                    import json
+                    st.info("🤖 **ReadyPlayerMe Bridge Active** | Transmitting Skeletal DNA...")
                     
-                    if cinema_mode:
-                        st.markdown("### 🎬 Cinema Mode: High-Fidelity 3D Avatar")
-                        dna_json = core.get_words_dna_json(words)
-                        if dna_json:
-                            import json
-                            st.info("🤖 **ReadyPlayerMe Bridge Active** | Transmitting Skeletal DNA...")
-                            
-                            # INLINE Three.js Component (No iframe - direct embed for Streamlit Cloud)
-                            html_component = f"""
-                            <!DOCTYPE html>
-                            <html><head>
-                            <style>
-                                * {{ margin:0; padding:0; box-sizing:border-box; }}
-                                body {{ background: linear-gradient(135deg, #1a1a2e, #16213e); display:flex; justify-content:center; align-items:center; min-height:100vh; font-family:'Inter',sans-serif; color:#fff; }}
-                                #canvas {{ width:100%; height:450px; border-radius:12px; }}
-                                .hud {{ display:flex; justify-content:space-around; margin-top:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; }}
-                                .hud-item {{ text-align:center; }}
-                                .hud-label {{ font-size:0.7rem; color:#aaa; text-transform:uppercase; }}
-                                .hud-value {{ font-size:1.1rem; font-weight:bold; color:#0f9d58; }}
-                            </style>
-                            </head><body>
-                            <div style="width:100%; max-width:700px; padding:10px;">
-                                <canvas id="canvas"></canvas>
-                                <div class="hud">
-                                    <div class="hud-item"><div class="hud-label">Status</div><div class="hud-value" id="status">Loading...</div></div>
-                                    <div class="hud-item"><div class="hud-label">Frame</div><div class="hud-value" id="frame">0/{len(dna_json)}</div></div>
-                                    <div class="hud-item"><div class="hud-label">Words</div><div class="hud-value">{' '.join(words)}</div></div>
-                                </div>
-                            </div>
-                            <script type="importmap">
-                            {{
-                                "imports": {{
-                                    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-                                    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+                    # INLINE Three.js Component (No iframe - direct embed for Streamlit Cloud)
+                    html_component = f"""
+                    <!DOCTYPE html>
+                    <html><head>
+                    <style>
+                        * {{ margin:0; padding:0; box-sizing:border-box; }}
+                        body {{ background: linear-gradient(135deg, #1a1a2e, #16213e); display:flex; justify-content:center; align-items:center; min-height:100vh; font-family:'Inter',sans-serif; color:#fff; }}
+                        #canvas {{ width:100%; height:450px; border-radius:12px; }}
+                        .hud {{ display:flex; justify-content:space-around; margin-top:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; }}
+                        .hud-item {{ text-align:center; }}
+                        .hud-label {{ font-size:0.7rem; color:#aaa; text-transform:uppercase; }}
+                        .hud-value {{ font-size:1.1rem; font-weight:bold; color:#0f9d58; }}
+                    </style>
+                    </head><body>
+                    <div style="width:100%; max-width:700px; padding:10px;">
+                        <canvas id="canvas"></canvas>
+                        <div class="hud">
+                            <div class="hud-item"><div class="hud-label">Status</div><div class="hud-value" id="status">Loading...</div></div>
+                            <div class="hud-item"><div class="hud-label">Frame</div><div class="hud-value" id="frame">0/{len(dna_json)}</div></div>
+                            <div class="hud-item"><div class="hud-label">Words</div><div class="hud-value">{' '.join(words)}</div></div>
+                        </div>
+                    </div>
+                    <script type="importmap">
+                    {{
+                        "imports": {{
+                            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+                        }}
+                    }}
+                    </script>
+                    <script type="module">
+                        import * as THREE from 'three';
+                        import {{ GLTFLoader }} from 'three/addons/loaders/GLTFLoader.js';
+                        import {{ VRMLoaderPlugin, VRMUtils }} from 'https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@2.0.6/lib/three-vrm.module.js';
+
+                        const DNA = {json.dumps(dna_json)};
+                        let vrm, frameIdx = 0;
+                        const canvas = document.getElementById('canvas');
+                        const scene = new THREE.Scene();
+                        scene.background = new THREE.Color(0x1a1a2e);
+                        const camera = new THREE.PerspectiveCamera(35, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
+                        camera.position.set(0, 1.0, 3);
+                        camera.lookAt(0, 1, 0);
+                        const renderer = new THREE.WebGLRenderer({{ canvas, antialias: true }});
+                        renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+                        renderer.setPixelRatio(window.devicePixelRatio);
+                        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+                        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+                        dirLight.position.set(1, 2, 1).normalize();
+                        scene.add(dirLight);
+
+                        const loader = new GLTFLoader();
+                        loader.register(p => new VRMLoaderPlugin(p));
+                        loader.load('https://models.readyplayer.me/6478f5f7a23d4cbdef3e45c1.vrm', gltf => {{
+                            vrm = gltf.userData.vrm;
+                            VRMUtils.rotateVRM0(vrm);
+                            scene.add(vrm.scene);
+                            document.getElementById('status').textContent = 'Playing';
+                        }}, null, e => {{ document.getElementById('status').textContent = 'Error'; console.error(e); }});
+
+                        const clock = new THREE.Clock();
+                        function animate() {{
+                            requestAnimationFrame(animate);
+                            if (vrm) {{
+                                vrm.update(clock.getDelta());
+                                if (DNA.length > 0) {{
+                                    const frame = DNA[frameIdx];
+                                    if (frame && frame.pose && frame.pose.length >= 45) {{
+                                        const leftArm = vrm.humanoid.getNormalizedBoneNode('leftUpperArm');
+                                        const rightArm = vrm.humanoid.getNormalizedBoneNode('rightUpperArm');
+                                        if (leftArm) leftArm.rotation.z = -(frame.pose[13*3+1] - frame.pose[11*3+1]) * 3;
+                                        if (rightArm) rightArm.rotation.z = (frame.pose[14*3+1] - frame.pose[12*3+1]) * 3;
+                                    }}
+                                    document.getElementById('frame').textContent = (frameIdx+1) + '/' + DNA.length;
+                                    frameIdx = (frameIdx + 1) % DNA.length;
                                 }}
                             }}
-                            </script>
-                            <script type="module">
-                                import * as THREE from 'three';
-                                import {{ GLTFLoader }} from 'three/addons/loaders/GLTFLoader.js';
-                                import {{ VRMLoaderPlugin, VRMUtils }} from 'https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@2.0.6/lib/three-vrm.module.js';
+                            renderer.render(scene, camera);
+                        }}
+                        animate();
+                    </script>
+                    </body></html>
+                    """
+                    st.components.v1.html(html_component, height=550)
+                    st.caption(f"🎬 Playing {len(dna_json)} frames | **{' '.join(words)}**")
 
-                                const DNA = {json.dumps(dna_json)};
-                                let vrm, frameIdx = 0;
-                                const canvas = document.getElementById('canvas');
-                                const scene = new THREE.Scene();
-                                scene.background = new THREE.Color(0x1a1a2e);
-                                const camera = new THREE.PerspectiveCamera(35, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
-                                camera.position.set(0, 1.0, 3);
-                                camera.lookAt(0, 1, 0);
-                                const renderer = new THREE.WebGLRenderer({{ canvas, antialias: true }});
-                                renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-                                renderer.setPixelRatio(window.devicePixelRatio);
-                                scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-                                const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-                                dirLight.position.set(1, 2, 1).normalize();
-                                scene.add(dirLight);
-
-                                const loader = new GLTFLoader();
-                                loader.register(p => new VRMLoaderPlugin(p));
-                                loader.load('https://models.readyplayer.me/6478f5f7a23d4cbdef3e45c1.vrm', gltf => {{
-                                    vrm = gltf.userData.vrm;
-                                    VRMUtils.rotateVRM0(vrm);
-                                    scene.add(vrm.scene);
-                                    document.getElementById('status').textContent = 'Playing';
-                                }}, null, e => {{ document.getElementById('status').textContent = 'Error'; console.error(e); }});
-
-                                const clock = new THREE.Clock();
-                                function animate() {{
-                                    requestAnimationFrame(animate);
-                                    if (vrm) {{
-                                        vrm.update(clock.getDelta());
-                                        if (DNA.length > 0) {{
-                                            const frame = DNA[frameIdx];
-                                            // Simplified arm animation from pose data
-                                            if (frame && frame.pose && frame.pose.length >= 45) {{
-                                                const leftArm = vrm.humanoid.getNormalizedBoneNode('leftUpperArm');
-                                                const rightArm = vrm.humanoid.getNormalizedBoneNode('rightUpperArm');
-                                                if (leftArm) leftArm.rotation.z = -(frame.pose[13*3+1] - frame.pose[11*3+1]) * 3;
-                                                if (rightArm) rightArm.rotation.z = (frame.pose[14*3+1] - frame.pose[12*3+1]) * 3;
-                                            }}
-                                            document.getElementById('frame').textContent = (frameIdx+1) + '/' + DNA.length;
-                                            frameIdx = (frameIdx + 1) % DNA.length;
-                                        }}
-                                    }}
-                                    renderer.render(scene, camera);
-                                }}
-                                animate();
-                            </script>
-                            </body></html>
-                            """
-                            st.components.v1.html(html_component, height=550)
-                            st.caption(f"🎬 Playing {len(dna_json)} frames | **{' '.join(words)}**")
-
-                            
-                    col_orig, col_av, col_neo = st.columns(3)
-                    with col_orig:
-                        st.markdown("### 📽️ Source Benchmark")
-                        f_orig = v_clips[0]
-                        for c in v_clips[1:]: f_orig = f_orig + c
-                        p_orig = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-                        f_orig.save(p_orig, overwrite=True)
-                        st.video(p_orig)
-                        st.caption("Standard library stitching.")
-                        
-                    with col_av:
-                        st.markdown("### 🤖 Seamless Skeletal")
-                        if full_dna is not None:
-                            out_p = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-                            renderer.render_landmark_dna(full_dna, out_p)
-                            st.video(out_p)
-                            st.caption("Internal 'Takhyeet' engine.")
-                            
-                    with col_neo:
-                        st.markdown("### 🦾 Neo-Avatar 3D")
-                        if full_dna is not None:
-                            out_neo = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
-                            renderer.render_neo_avatar(full_dna, out_neo)
-                            st.video(out_neo)
-                            st.caption("Premium volumetric animation.")
-                            
-                    st.success("✅ Multi-Phase Synthesis Complete")
+            col_orig, col_av, col_neo = st.columns(3)
+            with col_orig:
+                st.markdown("### 📽️ Source Benchmark")
+                f_orig = v_clips[0]
+                for c in v_clips[1:]: f_orig = f_orig + c
+                p_orig = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+                f_orig.save(p_orig, overwrite=True)
+                st.video(p_orig)
+                st.caption("Standard library stitching.")
+                
+            with col_av:
+                st.markdown("### 🤖 Seamless Skeletal")
+                if full_dna is not None:
+                    out_p = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+                    renderer.render_landmark_dna(full_dna, out_p)
+                    st.video(out_p)
+                    st.caption("Internal 'Takhyeet' engine.")
                 else:
-                    st.error("❌ Words not in Benchmark.")
+                    st.warning("⚠️ High-fidelity DNA not available for this combination.")
+                
+            with col_neo:
+                st.markdown("### 🦾 Neo-Avatar 3D")
+                if full_dna is not None:
+                    neo_p = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+                    renderer.render_neo_avatar(full_dna, neo_p)
+                    st.video(neo_p)
+                    st.caption("Premium Volumetric Representation.")
+                else:
+                    st.warning("⚠️ Avatar render requires skeletal DNA.")
 
     # TAB 2: VIDEO TO TEXT
     with tab2:
