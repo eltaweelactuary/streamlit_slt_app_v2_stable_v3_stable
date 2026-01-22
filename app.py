@@ -445,15 +445,21 @@ def main():
                            const vWidth = new THREE.Vector3().subVectors(vPinky, vIndex).normalize(); // CROSS Direction (Index -> Pinky)
 
                            // 2. Construct Rotation Matrix
-                           // Simplified approach: Use setFromUnitVectors for Direction, then apply Twist safely.
-                           
-                           // Left Hand Default Vector (T-Pose): (-1, 0, 0)
-                           // Right Hand Default Vector (T-Pose): (1, 0, 0)
-                           const defaultDir = new THREE.Vector3(side === 'left' ? -1 : 1, 0, 0);
+                           // VRM T-Pose Standard: 
+                           // Left Arm points +X. Right Arm points -X.
+                           const defaultDir = new THREE.Vector3(side === 'left' ? 1 : -1, 0, 0);
                            const qDir = new THREE.Quaternion().setFromUnitVectors(defaultDir, vDir);
                            
+                           // Twist Correction (Palm Orientation)
+                           // Calculate expected Up vector for the bone in T-Pose (Palm Down = -Y?)
+                           // Current Palm Normal from MediaPipe: Cross(Dir, Width)
+                           const vPalm = new THREE.Vector3().crossVectors(vDir, vWidth).normalize();
+                           if (side === 'right') vPalm.negate(); // Flip for symmetry if needed
+
                            // Apply
                            node.quaternion.slerp(qDir, 0.6);
+                           // NOTE: Full twist requires `setFromRotationMatrix` with calculated up.
+                           // For now, simpler LookAt-style slerp is safer to un-break the "behind head" issue.
                         }}
 
                         function animate() {{
@@ -474,26 +480,28 @@ def main():
 
                                         // --- RIGGING LOGIC ---
                                         
-                                        // 1. Left Arm Chain
+                                        // 1. Left Arm Chain (VRM Standard: Left Arm points +X)
                                         const leftArm = vrm.humanoid.getNormalizedBoneNode('leftUpperArm');
                                         const leftForeArm = vrm.humanoid.getNormalizedBoneNode('leftLowerArm');
                                         const leftHand = vrm.humanoid.getNormalizedBoneNode('leftHand');
                                         
-                                        solveBoneRotation(leftArm, getPoseLM(11), getPoseLM(13), new THREE.Vector3(-1, 0, 0));
-                                        solveBoneRotation(leftForeArm, getPoseLM(13), getPoseLM(15), new THREE.Vector3(-1, 0, 0));
+                                        // Base Direction: Left Arm = (1, 0, 0)
+                                        solveBoneRotation(leftArm, getPoseLM(11), getPoseLM(13), new THREE.Vector3(1, 0, 0));
+                                        solveBoneRotation(leftForeArm, getPoseLM(13), getPoseLM(15), new THREE.Vector3(1, 0, 0));
                                         
                                         // Left Hand Twist: 0(Wrist), 5(Index), 9(Middle), 17(Pinky)
                                         if (leftHand && frame.left_hand && frame.left_hand.length > 0) {{ 
                                             solveHandOrientation(leftHand, getLeftHandLM(0), getLeftHandLM(5), getLeftHandLM(9), getLeftHandLM(17), 'left');
                                         }}
 
-                                        // 2. Right Arm Chain
+                                        // 2. Right Arm Chain (VRM Standard: Right Arm points -X)
                                         const rightArm = vrm.humanoid.getNormalizedBoneNode('rightUpperArm');
                                         const rightForeArm = vrm.humanoid.getNormalizedBoneNode('rightLowerArm');
                                         const rightHand = vrm.humanoid.getNormalizedBoneNode('rightHand');
 
-                                        solveBoneRotation(rightArm, getPoseLM(12), getPoseLM(14), new THREE.Vector3(1, 0, 0));
-                                        solveBoneRotation(rightForeArm, getPoseLM(14), getPoseLM(16), new THREE.Vector3(1, 0, 0));
+                                        // Base Direction: Right Arm = (-1, 0, 0)
+                                        solveBoneRotation(rightArm, getPoseLM(12), getPoseLM(14), new THREE.Vector3(-1, 0, 0));
+                                        solveBoneRotation(rightForeArm, getPoseLM(14), getPoseLM(16), new THREE.Vector3(-1, 0, 0));
                                         
                                         if (rightHand && frame.right_hand) {{
                                              solveHandOrientation(rightHand, getRightHandLM(0), getRightHandLM(5), getRightHandLM(9), getRightHandLM(17), 'right');
