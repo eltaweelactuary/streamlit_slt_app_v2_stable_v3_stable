@@ -356,7 +356,7 @@ def main():
 
                         const loader = new GLTFLoader();
                         loader.register(p => new VRMLoaderPlugin(p));
-                        loader.load('https://pixiv.github.io/three-vrm/packages/three-vrm/examples/models/vrm/three-vrm-girl.vrm', gltf => {{
+                        loader.load('https://vrm-c.github.io/vrm-specification/0.0/models/Seed-v1/Seed-v1.vrm', gltf => {{
                             vrm = gltf.userData.vrm;
                             VRMUtils.rotateVRM0(vrm);
                             scene.add(vrm.scene);

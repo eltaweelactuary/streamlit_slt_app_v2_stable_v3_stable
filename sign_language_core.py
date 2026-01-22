@@ -402,37 +402,44 @@ class DigitalHumanRenderer:
             draw_limb(12, 14, (15, 23, 42), 18) # Right Upper Arm
             draw_limb(14, 16, (226, 232, 240), 12)
 
-            # 3. Draw Hands (Refined with Skeletal Connections)
+            # 3. Draw Hands (Ultimate Refinement: Skeletal + Palm)
             def draw_hand(start_idx, color):
-                # Hand Skeleton Mapping (MediaPipe style)
-                connections = [
+                # Correct MediaPipe Connections
+                finger_connections = [
                     (0,1), (1,2), (2,3), (3,4), # Thumb
-                    (0,5), (5,6), (6,7), (8,7), # Index (wait, 7,8)
+                    (5,6), (6,7), (7,8),        # Index
                     (9,10), (10,11), (11,12),   # Middle
                     (13,14), (14,15), (15,16),  # Ring
-                    (17,18), (18,19), (19,20),  # Pinky
-                    (0,5), (5,9), (9,13), (13,17), (17,0) # Palm Base
+                    (17,18), (18,19), (19,20)   # Pinky
                 ]
                 
-                # Draw Connections (Fingers)
-                for i1, i2 in connections:
+                # Palm Connections (Solid Base)
+                palm_indices = [0, 5, 9, 13, 17]
+                palm_points = []
+                for i in palm_indices:
+                    idx = (start_idx + i) * 3
+                    palm_points.append([int(cx + (frame_vec[idx] * width * 0.8)), int(cy + (frame_vec[idx+1] * height * 0.8))])
+                
+                # Draw Solid Palm
+                cv2.fillPoly(canvas, [np.array(palm_points, np.int32)], color, cv2.LINE_AA)
+                
+                # Draw Fingers
+                for i1, i2 in finger_connections:
                     try:
-                        idx1 = (start_idx + i1) * 3
-                        idx2 = (start_idx + i2) * 3
+                        idx1, idx2 = (start_idx + i1) * 3, (start_idx + i2) * 3
                         p1 = (int(cx + (frame_vec[idx1] * width * 0.8)), int(cy + (frame_vec[idx1+1] * height * 0.8)))
                         p2 = (int(cx + (frame_vec[idx2] * width * 0.8)), int(cy + (frame_vec[idx2+1] * height * 0.8)))
-                        cv2.line(canvas, p1, p2, color, 4)
+                        cv2.line(canvas, p1, p2, color, 6, cv2.LINE_AA) # Thicker fingers
                     except: pass
                 
-                # Draw Landmark Joints
+                # Joint Dots (Rounded Look)
                 for i in range(21):
                     idx = (start_idx + i) * 3
                     px, py = int(cx + (frame_vec[idx] * width * 0.8)), int(cy + (frame_vec[idx+1] * height * 0.8))
-                    cv2.circle(canvas, (px, py), 4, (255, 255, 255), -1)
-                    cv2.circle(canvas, (px, py), 2, color, -1)
+                    cv2.circle(canvas, (px, py), 3, (255, 255, 255), -1, cv2.LINE_AA)
             
-            draw_hand(0, (56, 189, 248))  
-            draw_hand(21, (244, 114, 182)) 
+            draw_hand(0, (56, 189, 248))  # Left Hand (Konecta Blue)
+            draw_hand(21, (244, 114, 182)) # Right Hand (Pink Glow)
 
             cv2.putText(canvas, "KONECTA AI REPRESENTATIVE v1.0", (width-320, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (56, 189, 248), 1)
             out.write(canvas)
