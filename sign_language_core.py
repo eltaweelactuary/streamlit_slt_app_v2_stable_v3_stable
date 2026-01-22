@@ -402,13 +402,34 @@ class DigitalHumanRenderer:
             draw_limb(12, 14, (15, 23, 42), 18) # Right Upper Arm
             draw_limb(14, 16, (226, 232, 240), 12)
 
-            # 3. Draw Hands
+            # 3. Draw Hands (Refined with Skeletal Connections)
             def draw_hand(start_idx, color):
+                # Hand Skeleton Mapping (MediaPipe style)
+                connections = [
+                    (0,1), (1,2), (2,3), (3,4), # Thumb
+                    (0,5), (5,6), (6,7), (8,7), # Index (wait, 7,8)
+                    (9,10), (10,11), (11,12),   # Middle
+                    (13,14), (14,15), (15,16),  # Ring
+                    (17,18), (18,19), (19,20),  # Pinky
+                    (0,5), (5,9), (9,13), (13,17), (17,0) # Palm Base
+                ]
+                
+                # Draw Connections (Fingers)
+                for i1, i2 in connections:
+                    try:
+                        idx1 = (start_idx + i1) * 3
+                        idx2 = (start_idx + i2) * 3
+                        p1 = (int(cx + (frame_vec[idx1] * width * 0.8)), int(cy + (frame_vec[idx1+1] * height * 0.8)))
+                        p2 = (int(cx + (frame_vec[idx2] * width * 0.8)), int(cy + (frame_vec[idx2+1] * height * 0.8)))
+                        cv2.line(canvas, p1, p2, color, 4)
+                    except: pass
+                
+                # Draw Landmark Joints
                 for i in range(21):
                     idx = (start_idx + i) * 3
                     px, py = int(cx + (frame_vec[idx] * width * 0.8)), int(cy + (frame_vec[idx+1] * height * 0.8))
-                    cv2.circle(canvas, (px, py), 6, color, -1)
-                    cv2.circle(canvas, (px, py), 2, (255, 255, 255), -1)
+                    cv2.circle(canvas, (px, py), 4, (255, 255, 255), -1)
+                    cv2.circle(canvas, (px, py), 2, color, -1)
             
             draw_hand(0, (56, 189, 248))  
             draw_hand(21, (244, 114, 182)) 
