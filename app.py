@@ -212,6 +212,18 @@ def load_or_train_core(core, translator):
     return False
 
 def main():
+    # ==== FORCE CACHE CLEAR: Delete old landmarks to trigger re-extraction ====
+    # This ensures the new Face Mesh expression logic is applied
+    cache_path = os.path.join(WRITABLE_BASE, "app_internal_data", "landmarks")
+    model_path = os.path.join(WRITABLE_BASE, "app_internal_data", "models")
+    if os.path.exists(cache_path):
+        import shutil
+        shutil.rmtree(cache_path, ignore_errors=True)
+        if os.path.exists(model_path):
+            shutil.rmtree(model_path, ignore_errors=True)
+        print("🗑️ CACHE CLEARED - Landmarks & Model will rebuild on this run")
+    # ============================================================================
+    
     st.title("🤟 Sign Language Translator")
     st.markdown("**Bidirectional Translation:** Text ↔ Pakistani Sign Language (PSL)")
     st.markdown("---")
@@ -328,7 +340,7 @@ def main():
                     import base64
                     
                     # Embed local VRM model for stability
-                    vrm_path = "VRM1_Constraint_Twist_Sample.vrm" # Ensure this file is in the root
+                    vrm_path = "5084648674725325209.vrm" # New VRM with BlendShapes
                     vrm_base64 = ""
                     if os.path.exists(vrm_path):
                         with open(vrm_path, "rb") as f:
@@ -414,18 +426,16 @@ def main():
                         function solveBoneRotation(node, p_start, p_end, baseDir) {{
                             if (!node || !p_start || !p_end) return;
                             
-                            // 1. Calculate Target Vector from MediaPipe (Flip Y & Z for VRM coordinate space)
                             const vTarget = new THREE.Vector3(
                                 p_end[0] - p_start[0],
                                 -(p_end[1] - p_start[1]), 
                                 -(p_end[2] - p_start[2])
                             ).normalize();
                             
-                            // 2. Calculate Quarantine Rotation (BaseDir -> Target)
                             const q = new THREE.Quaternion().setFromUnitVectors(baseDir, vTarget);
                             
-                            // 3. Apply Smoothly
-                            node.quaternion.slerp(q, 0.5); 
+                            // SMOOTHING: Low alpha (0.1) creates "Heavy/Cinematic" feel, filtering jitter
+                            node.quaternion.slerp(q, 0.1); 
                         }}
                         
                         // --- PRO HAND SOLVER: SWING-TWIST & PALM NORMAL ---
@@ -439,48 +449,48 @@ def main():
                            const vMiddle = toVec3(p_middle);
                            const vPinky = toVec3(p_pinky);
 
+                           // Stability Check: If hand is a Fist or undefined (Index close to Pinky), skip twist
+                           if (vIndex.distanceTo(vPinky) < 0.02) return;
+
                            // 1. Hand Axis (Direction)
                            const vDir = new THREE.Vector3().subVectors(vMiddle, vWrist);
                            // 2. Hand Width (Index to Pinky)
-                           const vWidth = new THREE.Vector3().subVectors(vIndex, vPinky); // Note: Index -> Pinky
+                           const vWidth = new THREE.Vector3().subVectors(vIndex, vPinky);
 
                            if (vDir.lengthSq() < 0.0001 || vWidth.lengthSq() < 0.0001) return;
                            vDir.normalize();
                            vWidth.normalize();
 
-                           // 3. Palm Normal (Cross Product)
-                           // This vector points perpendicularly out of the palm
+                           // 3. Palm Normal
                            const vNormal = new THREE.Vector3().crossVectors(vDir, vWidth).normalize();
 
                            // 4. Matrix Basis Construction
-                           // X=Width, Y=Normal, Z=Dir
                            const matrix = new THREE.Matrix4();
-                           
                            if (side === 'left') {{
-                               // Left Hand Matrix Construction
                                matrix.makeBasis(vWidth, vNormal, vDir);
                            }} else {{
-                               // Right Hand Mirroring
-                               // Flip Width Axis for symmetry
                                const vWidthRight = vWidth.clone().negate();
                                matrix.makeBasis(vWidthRight, vNormal, vDir);
                            }}
 
                            const qFinal = new THREE.Quaternion().setFromRotationMatrix(matrix);
 
-                           // 5. Apply
-                           node.quaternion.slerp(qFinal, 0.4);
+                           // SMOOTHING: Slower hand to avoid "Twitchy" wrists
+                           node.quaternion.slerp(qFinal, 0.15);
                         }}
                         
                         // --- NEUTRAL POSE (REST) ---
                         function resetArmToRest(arm, forearm, side) {{
                             if (!arm || !forearm) return;
-                            // Natural Rest: Arm Down (~70-80 deg), Forearm slightly bent
-                            const qArmDown = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, side === 'left' ? 1.4 : -1.4)); 
-                            arm.quaternion.slerp(qArmDown, 0.1);
+                            // Strict Attention: Arm straight down
+                            // Left Side: 1.5 radians (~85 deg)
+                            const qArmDown = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, side === 'left' ? 1.5 : -1.5)); 
                             
-                            // Straighten elbow (Identity)
-                            forearm.quaternion.slerp(new THREE.Quaternion(), 0.1); 
+                            // Force Snap if Left Hand (Attention Pose)
+                            const speed = (side === 'left') ? 0.2 : 0.1;
+                            
+                            arm.quaternion.slerp(qArmDown, speed);
+                            forearm.quaternion.slerp(new THREE.Quaternion(), speed); 
                         }}
 
                         const fps = 30;
@@ -504,18 +514,26 @@ def main():
                                     if (frame) {{
                                         
                                         // --- FACIAL EXPRESSIONS ---
+                                        let debugExpr = "😐";
                                         if (frame.expressions && vrm.expressionManager) {{
                                             const expr = frame.expressions;
-                                            // Apply BlendShapes (if supported by model)
                                             vrm.expressionManager.setValue('happy', expr.happy || 0);
                                             vrm.expressionManager.setValue('surprised', expr.surprised || 0);
                                             vrm.expressionManager.setValue('angry', expr.angry || 0);
                                             vrm.expressionManager.setValue('blink', expr.blink || 0);
+                                            
+                                            // Debug Text
+                                            if (expr.happy > 0.3) debugExpr = "😊";
+                                            else if (expr.angry > 0.3) debugExpr = "😠";
+                                            else if (expr.surprised > 0.3) debugExpr = "😲";
+                                            
+                                            // Update HUD
+                                            const hudExpr = document.getElementById('status');
+                                            if (hudExpr) hudExpr.textContent = `Playing ${debugExpr}`;
                                         }}
 
                                         if (frame.pose) {{
                                             const pose = frame.pose;
-                                            // Helper Wrapper for Arrays
                                             const getPoseLM = (idx) => (pose.length > idx*3) ? [pose[idx*3], pose[idx*3+1], pose[idx*3+2]] : [0,0,0];
                                             const getLeftHandLM = (idx) => (frame.left_hand && frame.left_hand.length > idx*3) ? [frame.left_hand[idx*3], frame.left_hand[idx*3+1], frame.left_hand[idx*3+2]] : null;
                                             const getRightHandLM = (idx) => (frame.right_hand && frame.right_hand.length > idx*3) ? [frame.right_hand[idx*3], frame.right_hand[idx*3+1], frame.right_hand[idx*3+2]] : null;
@@ -530,6 +548,10 @@ def main():
                                             const lShoulder = getPoseLM(11);
                                             const lElbow = getPoseLM(13);
                                             const lWrist = getPoseLM(15);
+                                            
+                                            // Strict Filter: If Wrist is below Waist or Elbow confidence low -> Attention Pose
+                                            // Simple Check: If Wrist Y > Elbow Y (Remember Y is inverted in 3D, but in MP: Y increases downwards)
+                                            // Actually simpler: If lWrist is [0,0,0] OR Left Hand Missing -> Rest
                                             
                                             if (lShoulder[0] !== 0 && lElbow[0] !== 0 && lWrist[0] !== 0) {{
                                                 solveBoneRotation(leftArm, lShoulder, lElbow, new THREE.Vector3(1, 0, 0));
