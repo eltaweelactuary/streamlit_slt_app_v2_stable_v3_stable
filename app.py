@@ -427,17 +427,7 @@ def main():
                             // 3. Apply Smoothly
                             node.quaternion.slerp(q, 0.5); 
                         }}
-
-                        function animate() {
-                            requestAnimationFrame(animate);
-                            if (vrm) {
-                                vrm.update(clock.getDelta());
-                                
-                                if (DNA.length > 0) {
-                                    const frame = DNA[frameIdx];
-                                    if (frame && frame.pose && frame.pose.length >= 33*3) {
-                                        const pose = frame.pose;
-                                        
+                        
                         // --- ADVANCED HAND ORIENTATION SOLVER (Matrix Basis) ---
                         function solveHandOrientation(node, p_wrist, p_index, p_middle, p_pinky, side) {{
                            if (!node || !p_wrist || !p_index || !p_middle || !p_pinky) return;
@@ -471,24 +461,10 @@ def main():
                            const defaultDir = new THREE.Vector3(side === 'left' ? -1 : 1, 0, 0);
                            const qDir = new THREE.Quaternion().setFromUnitVectors(defaultDir, vDir);
                            
-                           // Step B: Calculate Twist
-                           // Rotate a reference "Up" vector by qDir. 
-                           // Reference Up for Hand (Index->Pinky) in T-Pose is roughly -Y (Thumb is +Y, so Index->Pinky goes down).
-                           // Let's assume standard Palm Normal is -Z.
-                           // This part is tricky without exact bone axes. 
-                           // We will stick to the robust Single-Pass LookAt if qDir isn't enough.
-                           
                            // Robust Method: MToon/Constraint compatible
-                           // Just apply qDir for now. The twist requires matching the Palm Normal.
-                           // Palm Normal = Cross(Dir, Width).
-                           const vPalmNormal = new THREE.Vector3().crossVectors(vDir, vWidth).normalize();
-                           
-                           // Current approximate Up (Index->Pinky)
-                           // If Left Hand: Index(Up)->Pinky(Down) is roughly -Y.
-                           // If Right Hand: Index(Up)->Pinky(Down) is roughly -Y.
-                           
+                           // Just apply qDir for now.
                            node.quaternion.slerp(qDir, 0.6);
-                       }}
+                        }}
 
                         function animate() {{
                             requestAnimationFrame(animate);
@@ -551,7 +527,6 @@ def main():
                             renderer.render(scene, camera);
                         }}
                         animate();
-
                     </script>
                     </body></html>
                     """
