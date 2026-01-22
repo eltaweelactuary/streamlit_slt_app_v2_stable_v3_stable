@@ -200,6 +200,35 @@ class SignLanguageCore:
             return np.load(path)
         return None
 
+    def export_dna_json(self, dna_sequence):
+        """Converts a numpy DNA sequence into a JSON-friendly list of dictionaries for 3D rigging."""
+        if dna_sequence is None: return None
+        json_sequence = []
+        for frame in dna_sequence:
+            # We structure this so the 3D engine knows which point is which
+            frame_data = {
+                "left_hand": frame[0:63].tolist(),    # 21 pts * 3
+                "right_hand": frame[63:126].tolist(), # 21 pts * 3
+                "pose": frame[126:225].tolist()       # 33 pts * 3
+            }
+            json_sequence.append(frame_data)
+        return json_sequence
+
+    def get_words_dna_json(self, words_list):
+        """Returns the full stitched DNA for a sentence in JSON-ready format."""
+        dna_sequences = []
+        for w in words_list:
+            dna = self.get_word_dna(w)
+            if dna is not None:
+                dna_sequences.append(dna)
+        
+        if not dna_sequences: return None
+        
+        from sign_language_core import DigitalHumanRenderer
+        renderer = DigitalHumanRenderer()
+        full_seq = renderer.stitch_landmarks(dna_sequences)
+        return self.export_dna_json(full_seq)
+
     def speech_to_text(self):
         """Convert live speech to text for translation input (Graceful handles server lack of mic)"""
         try:
@@ -331,33 +360,36 @@ class DigitalHumanRenderer:
                 # Head (If user photo exists, use it! Otherwise use Geometric)
                 p_nose = get_p(0 + 42)
                 if self.user_face is not None:
-                    # Overlay User Face
+                    # Overlay User Photo
                     fw, fh = self.user_face.shape[1], self.user_face.shape[0]
                     y1, y2 = p_nose[1]-fh//2, p_nose[1]+fh//2
                     x1, x2 = p_nose[0]-fw//2, p_nose[0]+fw//2
-                    
                     if y1 >= 0 and y2 < height and x1 >= 0 and x2 < width:
                         overlay = self.user_face[:, :, :3]
                         mask = self.user_face[:, :, 3] / 255.0
                         for c in range(3):
                             canvas[y1:y2, x1:x2, c] = (1 - mask) * canvas[y1:y2, x1:x2, c] + mask * overlay[:, :, c]
-                    # White Border for head
-                    cv2.circle(canvas, p_nose, fh//2, (241, 245, 249), 2)
+                    cv2.circle(canvas, p_nose, fh//2, (241, 245, 249), 2) # Border
                 else:
-                    cv2.circle(canvas, p_nose, 40, (226, 232, 240), -1) # Geometric skin tone
+                    # Professional Geometric Face
+                    cv2.circle(canvas, p_nose, 40, (226, 232, 240), -1) 
                     cv2.circle(canvas, p_nose, 40, (241, 245, 249), 2)
-                    
-                # Eyes (Only if no photo)
-                if self.user_face is None:
+
+                # Neon Facial Tracking Sync (Eyes & Mouth - Always visible for tracking feedback)
+                try:
                     p_l_eye = get_p(2 + 42)
                     p_r_eye = get_p(5 + 42)
-                    cv2.circle(canvas, p_l_eye, 3, (15, 23, 42), -1)
-                    cv2.circle(canvas, p_r_eye, 3, (15, 23, 42), -1)
+                    # Glow Eyes
+                    cv2.circle(canvas, p_l_eye, 4, (56, 189, 248), -1)
+                    cv2.circle(canvas, p_l_eye, 2, (255, 255, 255), -1)
+                    cv2.circle(canvas, p_r_eye, 4, (56, 189, 248), -1)
+                    cv2.circle(canvas, p_r_eye, 2, (255, 255, 255), -1)
                     
-                    # Mouth
+                    # Expressive Mouth
                     p_l_mouth = get_p(9 + 42)
                     p_r_mouth = get_p(10 + 42)
-                    cv2.line(canvas, p_l_mouth, p_r_mouth, (15, 23, 42), 2)
+                    cv2.line(canvas, p_l_mouth, p_r_mouth, (255, 255, 255), 2)
+                except: pass
             except: pass
 
             # 2. Draw Limbs

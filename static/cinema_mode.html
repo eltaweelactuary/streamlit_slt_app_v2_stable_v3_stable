@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 Cinema Mode | SLT 3D Bridge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            width: 100%;
+            max-width: 800px;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: #0f9d58;
+            margin-bottom: 10px;
+        }
+
+        #threejs-canvas {
+            width: 100%;
+            height: 450px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .hud {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        .hud-item {
+            text-align: center;
+        }
+
+        .hud-label {
+            font-size: 0.7rem;
+            color: #aaa;
+            text-transform: uppercase;
+        }
+
+        .hud-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #0f9d58;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🤖 ReadyPlayerMe Bridge</h1>
+        <canvas id="threejs-canvas"></canvas>
+        <div class="hud">
+            <div class="hud-item">
+                <div class="hud-label">Status</div>
+                <div class="hud-value" id="status">Idle</div>
+            </div>
+            <div class="hud-item">
+                <div class="hud-label">Frame</div>
+                <div class="hud-value" id="frame-count">0</div>
+            </div>
+            <div class="hud-item">
+                <div class="hud-label">FPS</div>
+                <div class="hud-value" id="fps">30</div>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="three_bridge.js"></script>
+    <script>
+        // Listen for DNA data from parent Streamlit iframe
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'DNA_PAYLOAD') {
+                document.getElementById('status').textContent = 'Playing';
+                document.getElementById('frame-count').textContent = event.data.dna.length;
+                window.receiveAndPlayDna(event.data.dna);
+            }
+        });
+    </script>
+</body>
+
+</html>
