@@ -439,7 +439,7 @@ def main():
                                         const pose = frame.pose;
                                         
                         // --- ADVANCED HAND ORIENTATION SOLVER (Matrix Basis) ---
-                        function solveHandOrientation(node, p_wrist, p_index, p_middle, p_pinky, side) {
+                        function solveHandOrientation(node, p_wrist, p_index, p_middle, p_pinky, side) {{
                            if (!node || !p_wrist || !p_index || !p_middle || !p_pinky) return;
                            
                            const vWrist = new THREE.Vector3(...p_wrist);
@@ -488,26 +488,22 @@ def main():
                            // If Right Hand: Index(Up)->Pinky(Down) is roughly -Y.
                            
                            node.quaternion.slerp(qDir, 0.6);
-                           
-                           // Apply Twist (Simplified Roll) based on Index-Pinky tilt
-                           // (Refining this fully likely requires a custom skeleton retargeter, 
-                           // but this aligns direction perfectly).
-                        }
+                       }}
 
-                        function animate() {
+                        function animate() {{
                             requestAnimationFrame(animate);
-                            if (vrm) {
+                            if (vrm) {{
                                 vrm.update(clock.getDelta());
                                 
-                                if (DNA.length > 0) {
+                                if (DNA.length > 0) {{
                                     const frame = DNA[frameIdx];
-                                    if (frame && frame.pose) {
+                                    if (frame && frame.pose) {{
                                         const pose = frame.pose;
                                         
                                         // Helper Wrapper for Arrays (Handle native JSON format)
-                                        const getPoseLM = (idx) => (pose.length > idx*3) ? {x: pose[idx*3], y: pose[idx*3+1], z: pose[idx*3+2]} : {x:0, y:0, z:0};
-                                        const getLeftHandLM = (idx) => (frame.left_hand && frame.left_hand.length > idx*3) ? {x: frame.left_hand[idx*3], y: frame.left_hand[idx*3+1], z: frame.left_hand[idx*3+2]} : null;
-                                        const getRightHandLM = (idx) => (frame.right_hand && frame.right_hand.length > idx*3) ? {x: frame.right_hand[idx*3], y: frame.right_hand[idx*3+1], z: frame.right_hand[idx*3+2]} : null;
+                                        const getPoseLM = (idx) => (pose.length > idx*3) ? {{x: pose[idx*3], y: pose[idx*3+1], z: pose[idx*3+2]}} : {{x:0, y:0, z:0}};
+                                        const getLeftHandLM = (idx) => (frame.left_hand && frame.left_hand.length > idx*3) ? {{x: frame.left_hand[idx*3], y: frame.left_hand[idx*3+1], z: frame.left_hand[idx*3+2]}} : null;
+                                        const getRightHandLM = (idx) => (frame.right_hand && frame.right_hand.length > idx*3) ? {{x: frame.right_hand[idx*3], y: frame.right_hand[idx*3+1], z: frame.right_hand[idx*3+2]}} : null;
                                         const getLMVec = (idx) => [pose[idx*3], pose[idx*3+1], pose[idx*3+2]];
 
                                         // --- RIGGING LOGIC ---
@@ -521,9 +517,9 @@ def main():
                                         solveBoneRotation(leftForeArm, getLMVec(13), getLMVec(15), new THREE.Vector3(-1, 0, 0));
                                         
                                         // Left Hand Twist: 0(Wrist), 5(Index), 9(Middle), 17(Pinky)
-                                        if (leftHand && frame.left_hand) { 
+                                        if (leftHand && frame.left_hand) {{ 
                                             solveHandOrientation(leftHand, getLeftHandLM(0), getLeftHandLM(5), getLeftHandLM(9), getLeftHandLM(17), 'left');
-                                        }
+                                        }}
 
                                         // 2. Right Arm Chain
                                         const rightArm = vrm.humanoid.getNormalizedBoneNode('rightUpperArm');
@@ -533,18 +529,28 @@ def main():
                                         solveBoneRotation(rightArm, getLMVec(12), getLMVec(14), new THREE.Vector3(1, 0, 0));
                                         solveBoneRotation(rightForeArm, getLMVec(14), getLMVec(16), new THREE.Vector3(1, 0, 0));
                                         
-                                        if (rightHand && frame.right_hand) {
+                                        if (rightHand && frame.right_hand) {{
                                              solveHandOrientation(rightHand, getRightHandLM(0), getRightHandLM(5), getRightHandLM(9), getRightHandLM(17), 'right');
-                                        }
+                                        }}
                                         
                                         // 3. Head Rotation
                                         const head = vrm.humanoid.getNormalizedBoneNode('head');
-                                        if (head) {
+                                        if (head) {{
                                             const leftEar = getPoseLM(7);
                                             const rightEar = getPoseLM(8);
                                             const yaw = (leftEar.x - rightEar.x) * 2.0; 
                                             head.rotation.y = THREE.MathUtils.lerp(head.rotation.y, yaw, 0.1);
-                                        }
+                                        }}
+                                    }}
+                                    
+                                    // Loop DNA
+                                    document.getElementById('frame').textContent = (frameIdx+1) + '/' + DNA.length;
+                                    frameIdx = (frameIdx + 1) % DNA.length;
+                                }}
+                            }}
+                            renderer.render(scene, camera);
+                        }}
+                        animate();
                                     }
                                     
                                     // Loop DNA
