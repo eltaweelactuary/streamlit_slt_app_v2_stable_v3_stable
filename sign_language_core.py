@@ -271,20 +271,44 @@ class DigitalHumanRenderer:
                 i = idx * 3
                 return (int(cx + (frame_vec[i] * width * 0.8)), int(cy + (frame_vec[i+1] * height * 0.8)))
 
-            # 1. Draw Volumetric Torso
+            # 1. Draw Volumetric Torso (Corporate Suit)
             try:
                 p_l_sh = get_p(11 + 42) 
                 p_r_sh = get_p(12 + 42)
                 p_l_hip = get_p(23 + 42)
                 p_r_hip = get_p(24 + 42)
+                
+                # Suit Jacket
                 poly = np.array([p_l_sh, p_r_sh, p_r_hip, p_l_hip], np.int32)
-                cv2.fillPoly(canvas, [poly], (71, 85, 105)) 
-                cv2.polylines(canvas, [poly], True, (241, 245, 249), 2)
+                cv2.fillPoly(canvas, [poly], (15, 23, 42)) # Dark Navy Suit
+                cv2.polylines(canvas, [poly], True, (51, 65, 85), 2)
+                
+                # Shirt/Tie Area
+                neck_center = ((p_l_sh[0] + p_r_sh[0])//2, (p_l_sh[1] + p_r_sh[1])//2)
+                chest_center = ((p_l_hip[0] + p_r_hip[0])//2, (p_l_hip[1] + p_r_hip[1])//2)
+                shirt_poly = np.array([p_l_sh, neck_center, p_r_sh, chest_center], np.int32) # Simple V-neck
+                cv2.fillPoly(canvas, [shirt_poly], (241, 245, 249)) # White Shirt
+                
+                # Tie (Konecta Blue)
+                tie_tip = (chest_center[0], int(neck_center[1] + (chest_center[1] - neck_center[1])*0.6))
+                tie_poly = np.array([neck_center, (neck_center[0]-5, neck_center[1]+10), tie_tip, (neck_center[0]+5, neck_center[1]+10)], np.int32)
+                cv2.fillPoly(canvas, [tie_poly], (56, 189, 248)) 
                 
                 # Head
                 p_nose = get_p(0 + 42)
-                cv2.circle(canvas, p_nose, 35, (226, 232, 240), -1)
-                cv2.circle(canvas, p_nose, 35, (241, 245, 249), 2)
+                cv2.circle(canvas, p_nose, 40, (226, 232, 240), -1) # Skin tone-ish
+                cv2.circle(canvas, p_nose, 40, (241, 245, 249), 2)
+                
+                # Eyes (Pose 2 and 5 are approx eyes)
+                p_l_eye = get_p(2 + 42)
+                p_r_eye = get_p(5 + 42)
+                cv2.circle(canvas, p_l_eye, 3, (15, 23, 42), -1)
+                cv2.circle(canvas, p_r_eye, 3, (15, 23, 42), -1)
+                
+                # Mouth (Pose 9 and 10)
+                p_l_mouth = get_p(9 + 42)
+                p_r_mouth = get_p(10 + 42)
+                cv2.line(canvas, p_l_mouth, p_r_mouth, (15, 23, 42), 2)
             except: pass
 
             # 2. Draw Limbs
@@ -292,22 +316,23 @@ class DigitalHumanRenderer:
                 try: cv2.line(canvas, get_p(i1+42), get_p(i2+42), color, thickness)
                 except: pass
 
-            draw_limb(11, 13, (148, 163, 184), 15) 
-            draw_limb(13, 15, (148, 163, 184), 12)
-            draw_limb(12, 14, (148, 163, 184), 15) 
-            draw_limb(14, 16, (148, 163, 184), 12)
+            draw_limb(11, 13, (15, 23, 42), 18) # Left Upper Arm (Sleeve)
+            draw_limb(13, 15, (226, 232, 240), 12) # forearm (Skin)
+            draw_limb(12, 14, (15, 23, 42), 18) # Right Upper Arm
+            draw_limb(14, 16, (226, 232, 240), 12)
 
             # 3. Draw Hands
             def draw_hand(start_idx, color):
                 for i in range(21):
                     idx = (start_idx + i) * 3
                     px, py = int(cx + (frame_vec[idx] * width * 0.8)), int(cy + (frame_vec[idx+1] * height * 0.8))
-                    cv2.circle(canvas, (px, py), 5, color, -1)
+                    cv2.circle(canvas, (px, py), 6, color, -1)
+                    cv2.circle(canvas, (px, py), 2, (255, 255, 255), -1)
             
             draw_hand(0, (56, 189, 248))  
             draw_hand(21, (244, 114, 182)) 
 
-            cv2.putText(canvas, "NEO-AVATAR PREMIUM ANIMATION", (width-300, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+            cv2.putText(canvas, "KONECTA AI REPRESENTATIVE v1.0", (width-320, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (56, 189, 248), 1)
             out.write(canvas)
             
         out.release()
