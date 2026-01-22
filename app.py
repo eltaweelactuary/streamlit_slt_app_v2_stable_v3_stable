@@ -356,7 +356,7 @@ def main():
 
                         const loader = new GLTFLoader();
                         loader.register(p => new VRMLoaderPlugin(p));
-                        loader.load('https://models.readyplayer.me/6478f5f7a23d4cbdef3e45c1.vrm', gltf => {{
+                        loader.load('https://models.readyplayer.me/632121da056343450974828b.vrm', gltf => {{
                             vrm = gltf.userData.vrm;
                             VRMUtils.rotateVRM0(vrm);
                             scene.add(vrm.scene);
