@@ -529,7 +529,7 @@ def main():
                                             
                                             // Update HUD
                                             const hudExpr = document.getElementById('status');
-                                            if (hudExpr) hudExpr.textContent = `Playing ${debugExpr}`;
+                                            if (hudExpr) hudExpr.textContent = 'Playing ' + debugExpr;
                                         }}
 
                                         if (frame.pose) {{
