@@ -339,7 +339,7 @@ def main():
             if lemma in vocab:
                 refined.append(lemma)
             else:
-                # 3. Last fallback: Check if "s" was part of name or unknown
+                refined.append(w)
         return refined
 
     tab1, tab2 = st.tabs(["📝 Text → Video", "🎥 Video → Text"])
