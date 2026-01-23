@@ -5,37 +5,58 @@ import tempfile
 import streamlit as st
 import shutil
 import cv2
-
 import sys
+import threading
+import io
 
 # ==============================================================================
 # --- CRITICAL: GLOBAL MONKEYPATCH FOR STREAMLIT CLOUD PERMISSIONS ---
 # ==============================================================================
 WRITABLE_BASE = os.path.join(tempfile.gettempdir(), "slt_persistent_storage")
-os.makedirs(WRITABLE_BASE, exist_ok=True)
 
-# Streamlit reruns the script; we must ensure we don't patch a patch (Recursion Error)
-# We use 'sys' as it is a persistent singleton across reruns in the same process.
-if not hasattr(sys, "_slt_originals"):
-    sys._slt_originals = {
-        "makedirs": os.makedirs,
-        "mkdir": os.mkdir,
-        "open": builtins.open,
-        "rename": os.rename,
-        "replace": os.replace,
-        "exists": os.path.exists,
-        "isfile": os.path.isfile,
-        "listdir": os.listdir
-    }
+# Recursion Guard: Thread-local flag to break loops in monkeypatches
+if not hasattr(sys, "_slt_guard"):
+    sys._slt_guard = threading.local()
 
-_orig_makedirs = sys._slt_originals["makedirs"]
-_orig_mkdir = sys._slt_originals["mkdir"]
-_orig_open = sys._slt_originals["open"]
-_orig_rename = sys._slt_originals["rename"]
-_orig_replace = sys._slt_originals["replace"]
-_orig_exists = sys._slt_originals["exists"]
-_orig_isfile = sys._slt_originals["isfile"]
-_orig_listdir = sys._slt_originals["listdir"]
+def _is_guarded():
+    try:
+        return getattr(sys._slt_guard, "active", False)
+    except:
+        return False
+
+def _set_guarded(val):
+    try:
+        sys._slt_guard.active = val
+    except:
+        pass
+
+# Original Function Recovery: Persistent singleton across Streamlit reruns
+if not hasattr(sys, "_slt_orig"):
+    sys._slt_orig = {}
+
+def _get_orig(name, current_val):
+    # Only save if we don't have it OR if the saved version is a patch (recovery)
+    if name not in sys._slt_orig or sys._slt_orig[name].__name__.startswith("_patched_"):
+        if not current_val.__name__.startswith("_patched_"):
+            sys._slt_orig[name] = current_val
+    return sys._slt_orig.get(name, current_val)
+
+# Safety Fallback: Use io.open as the ultimate original open
+if "open" not in sys._slt_orig:
+    sys._slt_orig["open"] = io.open
+
+_orig_makedirs = _get_orig("makedirs", os.makedirs)
+_orig_mkdir    = _get_orig("mkdir", os.mkdir)
+_orig_open     = _get_orig("open", builtins.open)
+_orig_rename   = _get_orig("rename", os.rename)
+_orig_replace  = _get_orig("replace", os.replace)
+_orig_exists   = _get_orig("exists", os.path.exists)
+_orig_isfile   = _get_orig("isfile", os.path.isfile)
+_orig_listdir  = _get_orig("listdir", os.listdir)
+
+# Ensure WRITABLE_BASE exists (using original to avoid triggering patches prematurely)
+if not _orig_exists(WRITABLE_BASE):
+    _orig_makedirs(WRITABLE_BASE, exist_ok=True)
 
 def _get_shadow_path(path):
     if not path: return path
@@ -57,36 +78,76 @@ def _redirect_read_write(path, is_write=False):
     return path
 
 def _patched_makedirs(name, mode=0o777, exist_ok=False):
-    return _orig_makedirs(_redirect_read_write(name, is_write=True), mode, exist_ok)
+    if _is_guarded(): return _orig_makedirs(name, mode, exist_ok)
+    _set_guarded(True)
+    try:
+        return _orig_makedirs(_redirect_read_write(name, is_write=True), mode, exist_ok)
+    finally:
+        _set_guarded(False)
 
 def _patched_mkdir(path, mode=0o777, *args, **kwargs):
-    return _orig_mkdir(_redirect_read_write(path, is_write=True), mode, *args, **kwargs)
+    if _is_guarded(): return _orig_mkdir(path, mode, *args, **kwargs)
+    _set_guarded(True)
+    try:
+        return _orig_mkdir(_redirect_read_write(path, is_write=True), mode, *args, **kwargs)
+    finally:
+        _set_guarded(False)
 
 def _patched_open(file, *args, **kwargs):
-    mode = args[0] if args else kwargs.get('mode', 'r')
-    is_write = any(m in mode for m in ('w', 'a', '+', 'x'))
-    return _orig_open(_redirect_read_write(file, is_write=is_write), *args, **kwargs)
+    if _is_guarded(): return _orig_open(file, *args, **kwargs)
+    _set_guarded(True)
+    try:
+        mode = args[0] if args else kwargs.get('mode', 'r')
+        is_write = any(m in mode for m in ('w', 'a', '+', 'x'))
+        return _orig_open(_redirect_read_write(file, is_write=is_write), *args, **kwargs)
+    finally:
+        _set_guarded(False)
 
 def _patched_rename(src, dst, *args, **kwargs):
-    return _orig_rename(_redirect_read_write(src), _redirect_read_write(dst, is_write=True), *args, **kwargs)
+    if _is_guarded(): return _orig_rename(src, dst, *args, **kwargs)
+    _set_guarded(True)
+    try:
+        return _orig_rename(_redirect_read_write(src), _redirect_read_write(dst, is_write=True), *args, **kwargs)
+    finally:
+        _set_guarded(False)
 
 def _patched_replace(src, dst, *args, **kwargs):
-    return _orig_replace(_redirect_read_write(src), _redirect_read_write(dst, is_write=True), *args, **kwargs)
+    if _is_guarded(): return _orig_replace(src, dst, *args, **kwargs)
+    _set_guarded(True)
+    try:
+        return _orig_replace(_redirect_read_write(src), _redirect_read_write(dst, is_write=True), *args, **kwargs)
+    finally:
+        _set_guarded(False)
 
 def _patched_exists(path):
-    shadow = _get_shadow_path(path)
-    if shadow and _orig_exists(shadow): return True
-    return _orig_exists(path)
+    if _is_guarded(): return _orig_exists(path)
+    _set_guarded(True)
+    try:
+        shadow = _get_shadow_path(path)
+        if shadow and _orig_exists(shadow): return True
+        return _orig_exists(path)
+    finally:
+        _set_guarded(False)
 
 def _patched_isfile(path):
-    shadow = _get_shadow_path(path)
-    if shadow and _orig_isfile(shadow): return True
-    return _orig_isfile(path)
+    if _is_guarded(): return _orig_isfile(path)
+    _set_guarded(True)
+    try:
+        shadow = _get_shadow_path(path)
+        if shadow and _orig_isfile(shadow): return True
+        return _orig_isfile(path)
+    finally:
+        _set_guarded(False)
 
 def _patched_listdir(path):
-    return _orig_listdir(_redirect_read_write(path))
+    if _is_guarded(): return _orig_listdir(path)
+    _set_guarded(True)
+    try:
+        return _orig_listdir(_redirect_read_write(path))
+    finally:
+        _set_guarded(False)
 
-# Apply global patches ONLY once
+# Apply global patches
 os.makedirs = _patched_makedirs
 os.mkdir = _patched_mkdir
 builtins.open = _patched_open
