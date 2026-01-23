@@ -334,13 +334,13 @@ def main():
     # TAB 1: TEXT TO VIDEO
     with tab1:
         st.header("📝 Text to Sign Language Video")
-        st.info(f"**Available words:** {', '.join(PSL_VOCABULARY.keys())}")
-        
-        # Text input (with session state sync)
         if 'text_input_val' not in st.session_state:
             st.session_state['text_input_val'] = ""
 
         text_input = st.text_input("Enter text:", value=st.session_state['text_input_val'], placeholder="e.g., apple hello world", key="main_input")
+        
+        # Word Display below input
+        st.markdown(f"📖 **Supported Words:** `{', '.join(PSL_VOCABULARY.keys())}`")
         
         col1, col2 = st.columns([1, 1])
         with col1:
@@ -371,10 +371,16 @@ def main():
                     if w in PSL_VOCABULARY:
                         try:
                             status_placeholder.info(f"🔍 Processing: **{w}**")
-                            # The library works best with ENGLISH tokens directly.
-                            # It internally maps common words like 'apple', 'food', 'eat'.
-                            clip = translator.translate(w) 
                             
+                            # STABILITY PATCH: Try Urdu token first, fallback to English token
+                            # This ensures words like 'good' (اچھا) find their videos properly.
+                            urdu_token = PSL_VOCABULARY[w]
+                            clip = translator.translate(urdu_token)
+                            
+                            if clip is None or len(clip) == 0:
+                                # Fallback to English
+                                clip = translator.translate(w)
+
                             if clip is not None and len(clip) > 0:
                                 v_clips.append(clip)
                                 dna = core.get_word_dna(w)
