@@ -6,6 +6,8 @@ import streamlit as st
 import shutil
 import cv2
 
+import sys
+
 # ==============================================================================
 # --- CRITICAL: GLOBAL MONKEYPATCH FOR STREAMLIT CLOUD PERMISSIONS ---
 # ==============================================================================
@@ -13,25 +15,27 @@ WRITABLE_BASE = os.path.join(tempfile.gettempdir(), "slt_persistent_storage")
 os.makedirs(WRITABLE_BASE, exist_ok=True)
 
 # Streamlit reruns the script; we must ensure we don't patch a patch (Recursion Error)
-if not hasattr(builtins, "_slt_patches_applied"):
-    builtins._slt_orig_makedirs = os.makedirs
-    builtins._slt_orig_mkdir = os.mkdir
-    builtins._slt_orig_open = builtins.open
-    builtins._slt_orig_rename = os.rename
-    builtins._slt_orig_replace = os.replace
-    builtins._slt_orig_exists = os.path.exists
-    builtins._slt_orig_isfile = os.path.isfile
-    builtins._slt_orig_listdir = os.path.listdir
-    builtins._slt_patches_applied = True
+# We use 'sys' as it is a persistent singleton across reruns in the same process.
+if not hasattr(sys, "_slt_originals"):
+    sys._slt_originals = {
+        "makedirs": os.makedirs,
+        "mkdir": os.mkdir,
+        "open": builtins.open,
+        "rename": os.rename,
+        "replace": os.replace,
+        "exists": os.path.exists,
+        "isfile": os.path.isfile,
+        "listdir": os.listdir
+    }
 
-_orig_makedirs = builtins._slt_orig_makedirs
-_orig_mkdir = builtins._slt_orig_mkdir
-_orig_open = builtins._slt_orig_open
-_orig_rename = builtins._slt_orig_rename
-_orig_replace = builtins._slt_orig_replace
-_orig_exists = builtins._slt_orig_exists
-_orig_isfile = builtins._slt_orig_isfile
-_orig_listdir = builtins._slt_orig_listdir
+_orig_makedirs = sys._slt_originals["makedirs"]
+_orig_mkdir = sys._slt_originals["mkdir"]
+_orig_open = sys._slt_originals["open"]
+_orig_rename = sys._slt_originals["rename"]
+_orig_replace = sys._slt_originals["replace"]
+_orig_exists = sys._slt_originals["exists"]
+_orig_isfile = sys._slt_originals["isfile"]
+_orig_listdir = sys._slt_originals["listdir"]
 
 def _get_shadow_path(path):
     if not path: return path
