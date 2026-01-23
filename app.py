@@ -14,13 +14,14 @@ import json
 # --- CRITICAL: GLOBAL MONKEYPATCH FOR STREAMLIT CLOUD PERMISSIONS ---
 # ==============================================================================
 WRITABLE_BASE = os.path.join(tempfile.gettempdir(), "slt_persistent_storage")
+APP_ROOT = os.path.abspath(os.getcwd()).replace("\\", "/")
 
 # Recovery: Capture absolute original functions once and preserve them in sys
 if not hasattr(sys, "_slt_orig"):
     sys._slt_orig = {
         "makedirs": os.makedirs,
         "mkdir": os.mkdir,
-        "open": io.open,  # io.open is a safe, unpatched fallback
+        "open": io.open, 
         "rename": os.rename,
         "replace": os.replace,
         "exists": os.path.exists,
@@ -51,22 +52,39 @@ def _ensure_parent(path):
 
 def _redirect_path(path, is_write=False):
     if not path: return path
-    p_str = str(path).replace("\\", "/")
     
-    # 1. Internal library redirection (site-packages -> /tmp)
-    if "sign_language_translator" in p_str and "site-packages" in p_str:
-        rel = p_str.split("sign_language_translator/")[-1]
-        shadow = os.path.join(WRITABLE_BASE, rel)
+    # Normalize to absolute path for consistent comparison
+    try:
+        abs_p = os.path.abspath(path).replace("\\", "/")
+    except:
+        abs_p = str(path).replace("\\", "/")
+
+    # Rule 1: Redirect any path inside site-packages/sign_language_translator
+    if "sign_language_translator" in abs_p and "site-packages" in abs_p:
+        rel = abs_p.split("sign_language_translator/")[-1]
+        shadow = os.path.join(WRITABLE_BASE, rel).replace("\\", "/")
         if is_write:
             _ensure_parent(shadow)
             return shadow
         if _orig_exists(shadow):
             return shadow
-    
-    # 2. General write protection: Ensure parent exists for any write in WRITABLE_BASE
-    if p_str.startswith(WRITABLE_BASE.replace("\\", "/")) and is_write:
-        _ensure_parent(p_str)
-        
+
+    # Rule 2: Redirect any write attempt to the project folder (ReadOnly on SL Cloud)
+    if abs_p.startswith(APP_ROOT) and not abs_p.startswith(WRITABLE_BASE.replace("\\", "/")):
+        rel = os.path.relpath(abs_p, APP_ROOT).replace("\\", "/")
+        # Avoid infinite nesting if rel is '.'
+        if rel == ".": return abs_p
+        shadow = os.path.join(WRITABLE_BASE, rel).replace("\\", "/")
+        if is_write:
+            _ensure_parent(shadow)
+            return shadow
+        if _orig_exists(shadow):
+            return shadow
+
+    # Rule 3: For existing redirects in /tmp, ensure parent exists on write
+    if abs_p.startswith(WRITABLE_BASE.replace("\\", "/")) and is_write:
+        _ensure_parent(abs_p)
+
     return path
 
 def _patched_open(file, *args, **kwargs):
@@ -90,7 +108,7 @@ def _patched_exists(path):
     finally:
         _slt_tls.active = False
 
-# Apply surgical patches (using lambdas for simple cases to keep code clear)
+# Apply surgical patches
 os.makedirs = lambda n, *a, **k: _orig_makedirs(_redirect_path(n, True), *a, **k)
 os.mkdir    = lambda p, *a, **k: _orig_mkdir(_redirect_path(p, True), *a, **k)
 builtins.open = _patched_open
