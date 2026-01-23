@@ -254,8 +254,42 @@ def main():
         st.error("❌ Failed to initialize SLT Core.")
         st.stop()
     
-    st.success(f"✅ System Ready | Vocabulary Size: {len(core.landmark_dict if core.landmark_dict else [])}")
+    # --- NEW: NLP LEMMATIZATION & UI SUGGESTIONS ---
+    SUGGESTED_SENTENCES = [
+        "hello name my ahmed",
+        "i drink water",
+        "he is eating",
+        "where is school",
+        "she go house"
+    ]
     
+    def preprocess_text(text, vocab):
+        """Simple Lemmatizer: Maps 'eating' -> 'eat', 'books' -> 'book', etc."""
+        tokens = text.lower().replace(",", "").replace(".", "").split()
+        refined = []
+        stop_words = {"am", "are", "is", "a", "an"} # Auxiliary words traditionally skipped in PSL if not emphasizing state
+        
+        for w in tokens:
+            if w in stop_words and w not in vocab: continue
+            
+            # Direct match
+            if w in vocab:
+                refined.append(w)
+                continue
+            
+            # Lemmatization (Suffix Stripping)
+            lemma = w
+            if w.endswith("ing"): lemma = w[:-3]
+            elif w.endswith("s") and not w.endswith("ss"): lemma = w[:-1]
+            elif w.endswith("ed"): lemma = w[:-2]
+            elif w.endswith("es"): lemma = w[:-2]
+            
+            if lemma in vocab:
+                refined.append(lemma)
+            else:
+                refined.append(w) # Keep as is if unknown
+        return refined
+
     tab1, tab2 = st.tabs(["📝 Text → Video", "🎥 Video → Text"])
     
     # TAB 1: TEXT TO VIDEO
@@ -263,7 +297,22 @@ def main():
         st.header("📝 Text to Sign Language Video")
         st.info(f"**Available words:** {', '.join(PSL_VOCABULARY.keys())}")
         
-        text_input = st.text_input("Enter text:", placeholder="e.g., apple good world")
+        # Suggestions HUD
+        st.markdown("💡 **Suggestions:**")
+        cols = st.columns(len(SUGGESTED_SENTENCES))
+        suggestion_clicked = None
+        for i, sent in enumerate(SUGGESTED_SENTENCES):
+            if cols[i].button(sent, key=f"sug_{i}"):
+                suggestion_clicked = sent
+
+        # Text input (with session state sync)
+        if 'text_input_val' not in st.session_state:
+            st.session_state['text_input_val'] = ""
+            
+        if suggestion_clicked:
+            st.session_state['text_input_val'] = suggestion_clicked
+
+        text_input = st.text_input("Enter text:", value=st.session_state['text_input_val'], placeholder="e.g., apple good world", key="main_input")
         
         col1, col2 = st.columns([1, 1])
         with col1:
@@ -275,10 +324,12 @@ def main():
                     if voice_text:
                         st.info(f"🎤 Heard: **{voice_text}**")
                         text_input = voice_text
+                        st.session_state['text_input_val'] = voice_text
 
         if gen_btn and text_input:
             with st.spinner("🧪 Transforming to Digital Avatar..."):
-                words = text_input.lower().split()
+                # Use our new NLP preprocessor
+                words = preprocess_text(text_input, PSL_VOCABULARY)
                 st.session_state['last_words'] = words
                 v_clips = []
                 dna_list = []
