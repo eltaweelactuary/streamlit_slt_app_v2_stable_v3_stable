@@ -398,10 +398,9 @@ def main():
                     if w in PSL_VOCABULARY:
                         try:
                             status_placeholder.info(f"🔍 Processing: **{w}**")
-                            # CRITICAL FIX: Pass the Urdu token (e.g. 'کھانا' for 'food') 
-                            # to the engine as it was initialized with text_language="urdu".
-                            urdu_token = PSL_VOCABULARY[w]
-                            clip = translator.translate(urdu_token) 
+                            # The library works best with ENGLISH tokens directly.
+                            # It internally maps common words like 'apple', 'food', 'eat'.
+                            clip = translator.translate(w) 
                             
                             if clip is not None and len(clip) > 0:
                                 v_clips.append(clip)
@@ -578,7 +577,8 @@ def main():
                                 -(p_end[2] - p_start[2])
                             ).normalize();
                             const q = new THREE.Quaternion().setFromUnitVectors(baseDir, vTarget);
-                            node.quaternion.slerp(q, 0.1); 
+                            // STABILITY STRENGTH: Reduced slerp (0.05) for maximum limb stabilization
+                            node.quaternion.slerp(q, 0.05); 
                         }
                         
                         function solveHandOrientation(node, p_wrist, p_index, p_middle, p_pinky, side) {
@@ -599,7 +599,8 @@ def main():
                                matrix.makeBasis(vForwardR, vNormal, vSide);
                            }
                            const qFinal = new THREE.Quaternion().setFromRotationMatrix(matrix);
-                           node.quaternion.slerp(qFinal, 0.25);
+                           // STABILITY STRENGTH: Slightly higher for hands (0.08) than limbs, but still smooth
+                           node.quaternion.slerp(qFinal, 0.08); 
                         }
                         
                         function resetArmToRest(arm, forearm, side) {
@@ -646,6 +647,7 @@ def main():
                                             const leftForeArm = vrm.humanoid.getNormalizedBoneNode('leftLowerArm');
                                             const leftHand = vrm.humanoid.getNormalizedBoneNode('leftHand');
                                             if (getPoseLM(11)[0] !== 0) {
+                                                // SMOOTHING: Slower interpolation for arms (0.05)
                                                 solveBoneRotation(leftArm, getPoseLM(11), getPoseLM(13), new THREE.Vector3(1, 0, 0));
                                                 solveBoneRotation(leftForeArm, getPoseLM(13), getPoseLM(15), new THREE.Vector3(1, 0, 0));
                                                 if (leftHand && getLeftHandLM(0)) {
@@ -758,28 +760,41 @@ def main():
 
         else:
             st.subheader("🔴 Live Video Recording & Analysis")
-            st.markdown(""" capture a short video (2-5 seconds) for each sign. """)
+            st.markdown("""**Instructions:** Capture a clear stabilized video (2-5 seconds). Ensure your hands are clearly visible in the frame for accurate landmark detection.""")
+            
             uploaded_file = st.file_uploader("Upload or Record Sign Clip", type=["mp4", "avi", "mov"], key="vid_uploader")
             
             if uploaded_file:
+                # Use a specific key for processing to avoid rerun loops
+                file_id = f"{uploaded_file.name}_{uploaded_file.size}"
+                
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp_vid:
                     tmp_vid.write(uploaded_file.read())
                     temp_path = tmp_vid.name
                 
                 st.video(temp_path)
                 
-                if st.button("🔍 Recognize & Add Sign"):
-                    file_hash = f"{uploaded_file.name}_{uploaded_file.size}"
-                    if st.session_state.get('last_proc_vid') == file_hash:
-                        st.warning("⚠️ This clip was already added.")
-                    else:
+                # Check if this exact file was just processed
+                if st.session_state.get('last_proc_vid') == file_id:
+                   label = st.session_state.get('last_proc_label')
+                   if label:
+                       st.success(f"🏆 Last Recognition: **{label}**")
+                   st.info("💡 To analyze a new clip, please upload a different file.")
+                else:
+                    if st.button("🔍 Recognize & Add Sign"):
                         with st.spinner("🧠 Analyzing Sign Motion..."):
                             label, confidence = core.predict_sign(temp_path)
                             if label:
-                                st.success(f"🏆 Recognized: **{label}**")
-                                st.session_state['shared_sentence'].append(label)
-                                st.session_state['last_proc_vid'] = file_hash
+                                st.success(f"🏆 Recognized: **{label}** ({confidence:.1f}%)")
+                                # Avoid duplicate appends if user clicks multiple times
+                                if label not in st.session_state['shared_sentence'][-1:] or not st.session_state['shared_sentence']:
+                                    st.session_state['shared_sentence'].append(label)
+                                
+                                st.session_state['last_proc_vid'] = file_id
+                                st.session_state['last_proc_label'] = label
                                 st.rerun()
+                            else:
+                                st.error("❌ Recognition failed. Please try a clearer video with better lighting.")
 
     st.markdown("---")
     st.markdown("Designed by **Ahmed Eltaweel** | AI Architect @ Konecta 🚀")
