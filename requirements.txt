@@ -16,3 +16,5 @@ torchvision==0.17.1
 ultralytics>=8.1.0
 SpeechRecognition>=3.10.0
 PyAudio>=0.2.13
+streamlit-webrtc>=0.47.0
+av>=11.0.0

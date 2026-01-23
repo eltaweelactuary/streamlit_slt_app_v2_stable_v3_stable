@@ -419,240 +419,195 @@ def main():
                     
                     st.info("🤖 **Local VRM Bridge Active** | Transmitting Skeletal DNA...")
                     
-                    html_component = f"""
+                    html_component = """
                     <!DOCTYPE html>
                     <html><head>
                     <style>
-                        * {{ margin:0; padding:0; box-sizing:border-box; }}
-                        body {{ background: linear-gradient(135deg, #1a1a2e, #16213e); display:flex; justify-content:center; align-items:center; min-height:100vh; font-family:'Inter',sans-serif; color:#fff; }}
-                        #canvas {{ width:100%; height:450px; border-radius:12px; }}
-                        .hud {{ display:flex; justify-content:space-around; margin-top:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; }}
-                        .hud-item {{ text-align:center; }}
-                        .hud-label {{ font-size:0.7rem; color:#aaa; text-transform:uppercase; }}
-                        .hud-value {{ font-size:1.1rem; font-weight:bold; color:#0f9d58; }}
+                        * { margin:0; padding:0; box-sizing:border-box; }
+                        body { background: linear-gradient(135deg, #0a0a12, #16213e); display:flex; justify-content:center; align-items:center; min-height:100vh; font-family:'Inter',sans-serif; color:#fff; }
+                        #canvas { width:100%; height:450px; border-radius:12px; }
+                        .hud { display:flex; justify-content:space-around; margin-top:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; }
+                        .hud-item { text-align:center; }
+                        .hud-label { font-size:0.7rem; color:#aaa; text-transform:uppercase; }
+                        .hud-value { font-size:1.1rem; font-weight:bold; color:#0f9d58; }
                     </style>
                     </head><body>
                     <div style="width:100%; max-width:700px; padding:10px;">
                         <canvas id="canvas"></canvas>
                         <div class="hud">
                             <div class="hud-item"><div class="hud-label">Status</div><div class="hud-value" id="status">Loading...</div></div>
-                            <div class="hud-item"><div class="hud-label">Frame</div><div class="hud-value" id="frame">0/{len(dna_json)}</div></div>
-                            <div class="hud-item"><div class="hud-label">Words</div><div class="hud-value">{' '.join(words)}</div></div>
+                            <div class="hud-item"><div class="hud-label">Frame</div><div class="hud-value" id="frame">0/VAR_DNA_LEN</div></div>
+                            <div class="hud-item"><div class="hud-label">Words</div><div class="hud-value">VAR_WORDS</div></div>
                         </div>
                     </div>
                     <script type="importmap">
-                    {{
-                        "imports": {{
+                    {
+                        "imports": {
                             "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
                             "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-                        }}
-                    }}
+                        }
+                    }
                     </script>
                     <script type="module">
                         import * as THREE from 'three';
-                        import {{ GLTFLoader }} from 'three/addons/loaders/GLTFLoader.js';
-                        import {{ VRMLoaderPlugin, VRMUtils }} from 'https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@2.0.6/lib/three-vrm.module.js';
+                        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+                        import { VRMLoaderPlugin, VRMUtils } from 'https://cdn.jsdelivr.net/npm/@pixiv/three-vrm@2.0.6/lib/three-vrm.module.js';
 
-                        const DNA = {json.dumps(dna_json)};
+                        const DNA = VAR_DNA_DATA;
                         let vrm, frameIdx = 0;
                         const canvas = document.getElementById('canvas');
                         const scene = new THREE.Scene();
-                        scene.background = new THREE.Color(0x1a1a2e);
+                        scene.background = new THREE.Color(0x0a0a12); 
                         const camera = new THREE.PerspectiveCamera(35, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
-                        camera.position.set(0, 1.0, 3);
-                        camera.lookAt(0, 1, 0);
-                        const renderer = new THREE.WebGLRenderer({{ canvas, antialias: true }});
+                        camera.position.set(0, 1.2, 2.5); 
+                        camera.lookAt(0, 1.2, 0);
+                        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
                         renderer.setSize(canvas.clientWidth, canvas.clientHeight);
                         renderer.setPixelRatio(window.devicePixelRatio);
-                        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
-                        const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-                        dirLight.position.set(1, 2, 1).normalize();
+                        renderer.outputColorSpace = THREE.SRGBColorSpace; 
+                        
+                        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.5);
+                        hemiLight.position.set(0, 20, 0);
+                        scene.add(hemiLight);
+
+                        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+                        dirLight.position.set(2, 5, 2);
                         scene.add(dirLight);
 
                         const loader = new GLTFLoader();
                         loader.register(p => new VRMLoaderPlugin(p));
                         
-                        // Using Local Base64 Model for Ultimate Stability
-                        const vrmData = "data:application/octet-stream;base64," + "{vrm_base64}";
+                        const vrmData = "data:application/octet-stream;base64," + "VAR_VRM_BASE64";
                         
-                        if ("{vrm_base64}") {{
-                            loader.load(vrmData, gltf => {{
+                        if ("VAR_VRM_BASE64") {
+                            loader.load(vrmData, gltf => {
                                 vrm = gltf.userData.vrm;
                                 VRMUtils.rotateVRM0(vrm);
+                                vrm.scene.traverse(obj => {
+                                    if (obj.isMesh) {
+                                        obj.material.colorSpace = THREE.SRGBColorSpace;
+                                    }
+                                });
                                 scene.add(vrm.scene);
-                                document.getElementById('status').textContent = 'Playing (Local)';
-                            }}, null, e => {{ 
+                                document.getElementById('status').textContent = 'Konecta Rep Online';
+                            }, null, e => { 
                                 document.getElementById('status').textContent = 'Load Error: Corrupted Data';
                                 console.error(e);
-                            }});
-                        }} else {{
+                            });
+                        } else {
                              document.getElementById('status').textContent = 'Load Error: No Model Data';
-                        }}
+                        }
 
                         const clock = new THREE.Clock();
                         
-                        // --- ADVANCED FK SOLVER (Vector-to-Quaternion) ---
-                        function solveBoneRotation(node, p_start, p_end, baseDir) {{
+                        function solveBoneRotation(node, p_start, p_end, baseDir) {
                             if (!node || !p_start || !p_end) return;
-                            
                             const vTarget = new THREE.Vector3(
                                 p_end[0] - p_start[0],
                                 -(p_end[1] - p_start[1]), 
                                 -(p_end[2] - p_start[2])
                             ).normalize();
-                            
                             const q = new THREE.Quaternion().setFromUnitVectors(baseDir, vTarget);
-                            
-                            // SMOOTHING: Low alpha (0.1) creates "Heavy/Cinematic" feel, filtering jitter
                             node.quaternion.slerp(q, 0.1); 
-                        }}
+                        }
                         
-                        // --- SIMPLIFIED HAND SOLVER: Direction-Based (matches VRM bone hierarchy) ---
-                        function solveHandOrientation(node, p_wrist, p_index, p_middle, p_pinky, side) {{
-                           if (!node || !p_wrist || !p_middle) return;
-                           
-                           // Convert to VRM coordinate space (flip Y and Z)
+                        function solveHandOrientation(node, p_wrist, p_index, p_middle, p_pinky, side) {
+                           if (!node || !p_wrist || !p_middle || !p_pinky || !p_index) return;
                            const toVec3 = (a) => new THREE.Vector3(a[0], -a[1], -a[2]);
-                           
                            const vWrist = toVec3(p_wrist);
+                           const vIndex = toVec3(p_index);
                            const vMiddle = toVec3(p_middle);
-
-                           // Hand Direction: Wrist -> Middle finger base
-                           const vDir = new THREE.Vector3().subVectors(vMiddle, vWrist);
-                           
-                           // Stability Check
-                           if (vDir.lengthSq() < 0.0001) return;
-                           vDir.normalize();
-
-                           // VRM T-Pose: Left hand points +X, Right hand points -X
-                           const defaultDir = new THREE.Vector3(side === 'left' ? 1 : -1, 0, 0);
-                           
-                           // Calculate rotation from default to target
-                           const q = new THREE.Quaternion().setFromUnitVectors(defaultDir, vDir);
-
-                           // Apply smoothly
-                           node.quaternion.slerp(q, 0.2);
-                        }}
+                           const vPinky = toVec3(p_pinky);
+                           const vForward = new THREE.Vector3().subVectors(vMiddle, vWrist).normalize();
+                           const vSide = new THREE.Vector3().subVectors(vIndex, vPinky).normalize();
+                           const vNormal = new THREE.Vector3().crossVectors(vForward, vSide).normalize();
+                           const matrix = new THREE.Matrix4();
+                           if (side === 'left') {
+                               matrix.makeBasis(vForward, vNormal, vSide);
+                           } else {
+                               const vForwardR = vForward.clone().negate();
+                               matrix.makeBasis(vForwardR, vNormal, vSide);
+                           }
+                           const qFinal = new THREE.Quaternion().setFromRotationMatrix(matrix);
+                           node.quaternion.slerp(qFinal, 0.25);
+                        }
                         
-                        // --- NEUTRAL POSE (REST) ---
-                        function resetArmToRest(arm, forearm, side) {{
+                        function resetArmToRest(arm, forearm, side) {
                             if (!arm || !forearm) return;
-                            // Strict Attention: Arm straight down
-                            // Left Side: 1.5 radians (~85 deg)
                             const qArmDown = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, side === 'left' ? 1.5 : -1.5)); 
-                            
-                            // Force Snap if Left Hand (Attention Pose)
                             const speed = (side === 'left') ? 0.2 : 0.1;
-                            
                             arm.quaternion.slerp(qArmDown, speed);
                             forearm.quaternion.slerp(new THREE.Quaternion(), speed); 
-                        }}
+                        }
 
                         const fps = 30;
                         const timePerFrame = 1.0 / fps;
                         let timeAccumulator = 0.0;
 
-                        // --- REFINED HAND SOLVER: Stable Basis (No Random Twist) ---
-                        function solveHandOrientation(node, p_wrist, p_index, p_middle, p_pinky, side) {{
-                           if (!node || !p_wrist || !p_middle || !p_pinky || !p_index) return;
-                           
-                           const toVec3 = (a) => new THREE.Vector3(a[0], -a[1], -a[2]);
-                           
-                           const vWrist = toVec3(p_wrist);
-                           const vIndex = toVec3(p_index);
-                           const vMiddle = toVec3(p_middle);
-                           const vPinky = toVec3(p_pinky);
-
-                           // 1. Primary Axis: Wrist -> Middle base
-                           const vForward = new THREE.Vector3().subVectors(vMiddle, vWrist).normalize();
-                           
-                           // 2. Side Axis: Index -> Pinky (defines palm plane)
-                           const vSide = new THREE.Vector3().subVectors(vIndex, vPinky).normalize();
-
-                           // 3. Normal Axis (Palm Out)
-                           const vNormal = new THREE.Vector3().crossVectors(vForward, vSide).normalize();
-                           
-                           // 4. Matrix Basis (VRM Standard: X=Forward, Y=Normal, Z=Side)
-                           const matrix = new THREE.Matrix4();
-                           if (side === 'left') {{
-                               matrix.makeBasis(vForward, vNormal, vSide);
-                           }} else {{
-                               // Mirror for Right Hand
-                               const vForwardR = vForward.clone().negate();
-                               matrix.makeBasis(vForwardR, vNormal, vSide);
-                           }}
-
-                           const qFinal = new THREE.Quaternion().setFromRotationMatrix(matrix);
-                           
-                           // Responsiveness: 0.25 (User asked for less "randomness" and better speed)
-                           node.quaternion.slerp(qFinal, 0.25);
-                        }}
-
-                        function animate() {{
+                        function animate() {
                             requestAnimationFrame(animate);
-                            
                             const delta = clock.getDelta();
                             timeAccumulator += delta;
-                            
-                            if (vrm) {{
+                            if (vrm) {
                                 vrm.update(delta);
-                                
-                                if (DNA.length > 0 && timeAccumulator >= timePerFrame) {{
+                                const time = clock.getElapsedTime();
+                                const chest = vrm.humanoid.getNormalizedBoneNode('chest');
+                                if (chest) {
+                                    chest.rotation.z = Math.sin(time * 1.5) * 0.005; 
+                                    chest.rotation.x = (Math.sin(time * 1.2) * 0.01) + 0.05;
+                                }
+                                if (DNA.length > 0 && timeAccumulator >= timePerFrame) {
                                     timeAccumulator %= timePerFrame;
-                                    
                                     const frame = DNA[frameIdx];
-                                    if (frame) {{
-                                        
-                                        // --- FACIAL EXPRESSIONS (Dynamic Sync) ---
-                                        if (frame.expressions && vrm.expressionManager) {{
+                                    if (frame) {
+                                        if (frame.expressions && vrm.expressionManager) {
                                             const expr = frame.expressions;
                                             vrm.expressionManager.setValue('happy', expr.happy || 0);
                                             vrm.expressionManager.setValue('surprised', expr.surprised || 0);
                                             vrm.expressionManager.setValue('angry', expr.angry || 0);
                                             vrm.expressionManager.setValue('blink', expr.blink || 0);
-                                        }}
-
-                                        if (frame.pose) {{
+                                        }
+                                        if (frame.pose) {
                                             const pose = frame.pose;
                                             const getPoseLM = (idx) => (pose.length > idx*3) ? [pose[idx*3], pose[idx*3+1], pose[idx*3+2]] : [0,0,0];
                                             const getLeftHandLM = (idx) => (frame.left_hand && frame.left_hand.length > idx*3) ? [frame.left_hand[idx*3], frame.left_hand[idx*3+1], frame.left_hand[idx*3+2]] : null;
                                             const getRightHandLM = (idx) => (frame.right_hand && frame.right_hand.length > idx*3) ? [frame.right_hand[idx*3], frame.right_hand[idx*3+1], frame.right_hand[idx*3+2]] : null;
-
-                                            // 1. Left Arm
                                             const leftArm = vrm.humanoid.getNormalizedBoneNode('leftUpperArm');
                                             const leftForeArm = vrm.humanoid.getNormalizedBoneNode('leftLowerArm');
                                             const leftHand = vrm.humanoid.getNormalizedBoneNode('leftHand');
-                                            if (getPoseLM(11)[0] !== 0) {{
+                                            if (getPoseLM(11)[0] !== 0) {
                                                 solveBoneRotation(leftArm, getPoseLM(11), getPoseLM(13), new THREE.Vector3(1, 0, 0));
                                                 solveBoneRotation(leftForeArm, getPoseLM(13), getPoseLM(15), new THREE.Vector3(1, 0, 0));
-                                                if (leftHand && getLeftHandLM(0)) {{
+                                                if (leftHand && getLeftHandLM(0)) {
                                                     solveHandOrientation(leftHand, getLeftHandLM(0), getLeftHandLM(5), getLeftHandLM(9), getLeftHandLM(17), 'left');
-                                                }}
-                                            }} else {{ resetArmToRest(leftArm, leftForeArm, 'left'); }}
-
-                                            // 2. Right Arm
+                                                }
+                                            } else { resetArmToRest(leftArm, leftForeArm, 'left'); }
                                             const rightArm = vrm.humanoid.getNormalizedBoneNode('rightUpperArm');
                                             const rightForeArm = vrm.humanoid.getNormalizedBoneNode('rightLowerArm');
                                             const rightHand = vrm.humanoid.getNormalizedBoneNode('rightHand');
-                                            if (getPoseLM(12)[0] !== 0) {{
+                                            if (getPoseLM(12)[0] !== 0) {
                                                 solveBoneRotation(rightArm, getPoseLM(12), getPoseLM(14), new THREE.Vector3(-1, 0, 0));
                                                 solveBoneRotation(rightForeArm, getPoseLM(14), getPoseLM(16), new THREE.Vector3(-1, 0, 0));
-                                                if (rightHand && getRightHandLM(0)) {{
+                                                if (rightHand && getRightHandLM(0)) {
                                                     solveHandOrientation(rightHand, getRightHandLM(0), getRightHandLM(5), getRightHandLM(9), getRightHandLM(17), 'right');
-                                                }}
-                                            }} else {{ resetArmToRest(rightArm, rightForeArm, 'right'); }}
-                                        }}
-                                    }}
+                                                }
+                                            } else { resetArmToRest(rightArm, rightForeArm, 'right'); }
+                                        }
+                                    }
                                     document.getElementById('frame').textContent = (frameIdx+1) + '/' + DNA.length;
                                     frameIdx = (frameIdx + 1) % DNA.length;
-                                }}
-                            }}
+                                }
+                            }
                             renderer.render(scene, camera);
-                        }}
+                        }
                         animate();
                     </script>
                     </body></html>
-                    """
+                    """.replace("VAR_WORDS", ' '.join(words)) \
+                       .replace("VAR_DNA_LEN", str(len(dna_json))) \
+                       .replace("VAR_DNA_DATA", json.dumps(dna_json)) \
+                       .replace("VAR_VRM_BASE64", vrm_base64)
+                    
                     st.components.v1.html(html_component, height=550)
                     st.caption(f"🎬 DNA Stream Active | **{' '.join(words)}**")
 
@@ -677,6 +632,10 @@ def main():
                 else:
                     st.warning("⚠️ Avatar render requires skeletal DNA.")
 
+    # --- TAB 2: VIDEO TO TEXT ---
+    with tab2:
+        st.header("🎥 Video to Sign Language Text")
+        
         # --- SHARED SENTENCE BUILDER UI ---
         if 'shared_sentence' not in st.session_state:
             st.session_state['shared_sentence'] = []
@@ -684,7 +643,6 @@ def main():
         if st.session_state['shared_sentence']:
             st.info(f"📝 **Sentence Builder:** {' '.join(st.session_state['shared_sentence'])}")
             c1, c2, c3 = st.columns(3)
-            # Use unique keys to be safe
             if c1.button("🗑️ Clear Sentence", key="btn_clr_shared"):
                 st.session_state['shared_sentence'] = []
                 st.rerun()
@@ -693,40 +651,65 @@ def main():
                 st.success("✅ Sequence synced to Tab 1!")
             st.markdown("---")
 
-        # 🔴 LIVE VIDEO RECORDING & ANALYSIS
-        st.subheader("🔴 Live Video Recording & Analysis")
-        st.markdown("""
-        Capture a short video (2-5 seconds) for each sign. 
-        - **Mobile**: Tap below to record directly from your camera.
-        - **PC**: Record with your webcam or upload a clip.
-        """)
+        live_mode = st.toggle("⚡ Enable Live Streaming (Continuous Analysis)", value=False)
         
-        uploaded_file = st.file_uploader("Upload or Record Sign Clip", type=["mp4", "avi", "mov"], key="vid_uploader")
-        
-        if uploaded_file:
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp_vid:
-                tmp_vid.write(uploaded_file.read())
-                temp_path = tmp_vid.name
+        if live_mode:
+            st.subheader("🌐 Live WebRtc Stream")
+            st.warning("⚠️ Live analysis works best with a stable internet connection.")
             
-            # Display preview
-            st.video(temp_path)
+            try:
+                from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
+                import av
+                
+                if "live_label" not in st.session_state:
+                    st.session_state.live_label = ""
+
+                class SignProcessor:
+                    def __init__(self):
+                        self.frame_count = 0
+                        self.sequence = []
+
+                    def recv(self, frame):
+                        img = frame.to_ndarray(format="bgr24")
+                        return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+                webrtc_streamer(
+                    key="slt-live",
+                    mode=WebRtcMode.SENDRECV,
+                    rtc_configuration=RTCConfiguration(
+                        {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+                    ),
+                    video_processor_factory=SignProcessor,
+                    media_stream_constraints={"video": True, "audio": False},
+                )
+                st.info("💡 **Live Logic:** Real-time analysis streams frames directly to the SLT Core.")
+            except Exception as e:
+                st.error(f"❌ WebRTC Error: {e}")
+
+        else:
+            st.subheader("🔴 Live Video Recording & Analysis")
+            st.markdown(""" capture a short video (2-5 seconds) for each sign. """)
+            uploaded_file = st.file_uploader("Upload or Record Sign Clip", type=["mp4", "avi", "mov"], key="vid_uploader")
             
-            if st.button("🔍 Recognize & Add Sign"):
-                # Track last processed file to prevent double-adding on rerun
-                file_hash = f"{uploaded_file.name}_{uploaded_file.size}"
-                if st.session_state.get('last_proc_vid') == file_hash:
-                    st.warning("⚠️ This clip was already added to the sentence.")
-                else:
-                    with st.spinner("🧠 Analyzing Sign Motion..."):
-                        label, confidence = core.predict_sign(temp_path)
-                        if label:
-                            st.success(f"🏆 Recognized: **{label}** ({confidence:.1f}%)")
-                            st.session_state['shared_sentence'].append(label)
-                            st.session_state['last_proc_vid'] = file_hash
-                            st.toast(f"✅ Added to Builder: {label}")
-                            st.rerun() # Force update of the Builder UI at the top
-                        else:
-                            st.error("❌ Sign motion not recognized. Please try a clearer movement.")
+            if uploaded_file:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp_vid:
+                    tmp_vid.write(uploaded_file.read())
+                    temp_path = tmp_vid.name
+                
+                st.video(temp_path)
+                
+                if st.button("🔍 Recognize & Add Sign"):
+                    file_hash = f"{uploaded_file.name}_{uploaded_file.size}"
+                    if st.session_state.get('last_proc_vid') == file_hash:
+                        st.warning("⚠️ This clip was already added.")
+                    else:
+                        with st.spinner("🧠 Analyzing Sign Motion..."):
+                            label, confidence = core.predict_sign(temp_path)
+                            if label:
+                                st.success(f"🏆 Recognized: **{label}**")
+                                st.session_state['shared_sentence'].append(label)
+                                st.session_state['last_proc_vid'] = file_hash
+                                st.rerun()
 
     st.markdown("---")
     st.markdown("Designed by **Ahmed Eltaweel** | AI Architect @ Konecta 🚀")
