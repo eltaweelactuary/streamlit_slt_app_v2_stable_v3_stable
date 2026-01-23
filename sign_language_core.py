@@ -229,8 +229,13 @@ class SignLanguageCore:
 
     def predict_sign(self, video_path):
         """Predict sign from video using CLR Core"""
-        if not self.classifier: return None, 0
+        if not self.classifier: 
+            print("⚠️ Classifier not loaded.")
+            return None, 0
         landmarks = self.extract_landmarks_from_video(video_path)
+        if landmarks is None or len(landmarks) == 0:
+            print(f"⚠️ No landmarks detected in: {video_path}")
+            return None, 0
         return self.predict_from_landmarks(landmarks)
 
     def predict_from_landmarks(self, landmarks_vector):

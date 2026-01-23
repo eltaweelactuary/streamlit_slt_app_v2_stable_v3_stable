@@ -355,18 +355,17 @@ def main():
         
         # Suggestions HUD
         st.markdown("💡 **Suggestions:**")
+        
+        def set_suggestion(s):
+            st.session_state['text_input_val'] = s
+
         cols = st.columns(len(SUGGESTED_SENTENCES))
-        suggestion_clicked = None
         for i, sent in enumerate(SUGGESTED_SENTENCES):
-            if cols[i].button(sent, key=f"sug_{i}"):
-                suggestion_clicked = sent
+            cols[i].button(sent, key=f"sug_{i}", on_click=set_suggestion, args=(sent,))
 
         # Text input (with session state sync)
         if 'text_input_val' not in st.session_state:
             st.session_state['text_input_val'] = ""
-            
-        if suggestion_clicked:
-            st.session_state['text_input_val'] = suggestion_clicked
 
         text_input = st.text_input("Enter text:", value=st.session_state['text_input_val'], placeholder="e.g., apple good world", key="main_input")
         
@@ -374,13 +373,17 @@ def main():
         with col1:
             gen_btn = st.button("🚀 Generate Digital Human Output")
         with col2:
+            st.warning("⚠️ **Voice Disclaimer:** Microphone access requires a local setup and may not be available on server-hosted environments.")
             if st.button("🎤 Use Voice Input"):
                 with st.spinner("🎙️ Listening..."):
                     voice_text = core.speech_to_text()
                     if voice_text:
-                        st.info(f"🎤 Heard: **{voice_text}**")
-                        text_input = voice_text
-                        st.session_state['text_input_val'] = voice_text
+                        if voice_text.startswith("ERROR:"):
+                            st.error(voice_text)
+                        else:
+                            st.info(f"🎤 Heard: **{voice_text}**")
+                            text_input = voice_text
+                            st.session_state['text_input_val'] = voice_text
 
         if gen_btn and text_input:
             with st.spinner("🧪 Transforming to Digital Avatar..."):
@@ -395,16 +398,21 @@ def main():
                     if w in PSL_VOCABULARY:
                         try:
                             status_placeholder.info(f"🔍 Processing: **{w}**")
-                            # INTERNAL OPTIMIZATION: Pass the English token directly 
-                            # to avoid "No PakistanSL sign could be inferred for token = 'Urdu'" errors.
-                            clip = translator.translate(w) 
-                            v_clips.append(clip)
-                            dna = core.get_word_dna(w)
-                            if dna is not None:
-                                dna_list.append(dna)
-                                status_placeholder.success(f"✅ DNA for **{w}** ready.")
+                            # CRITICAL FIX: Pass the Urdu token (e.g. 'کھانا' for 'food') 
+                            # to the engine as it was initialized with text_language="urdu".
+                            urdu_token = PSL_VOCABULARY[w]
+                            clip = translator.translate(urdu_token) 
+                            
+                            if clip is not None and len(clip) > 0:
+                                v_clips.append(clip)
+                                dna = core.get_word_dna(w)
+                                if dna is not None:
+                                    dna_list.append(dna)
+                                    status_placeholder.success(f"✅ DNA for **{w}** ready.")
+                                else:
+                                    status_placeholder.warning(f"⚠️ DNA for **{w}** missing in dictionary.")
                             else:
-                                status_placeholder.warning(f"⚠️ DNA for **{w}** missing in dictionary.")
+                                status_placeholder.error(f"❌ Empty result from engine for word: **{w}**")
                         except Exception as e:
                             status_placeholder.error(f"❌ Error synthesizing **{w}**: {e}")
                     else:
@@ -445,28 +453,41 @@ def main():
         # PERSISTENT DISPLAY SECTION (Works even after toggle)
         if 'benchmark_path' in st.session_state:
             st.divider()
-            cinema_mode = st.toggle("🎭 Activate Cinema Mode (3D VRM Client)", value=False)
             
+            # Character Selection HUD
+            char_col1, char_col2 = st.columns([1, 1])
+            with char_col1:
+                cinema_mode = st.toggle("🎭 Activate Cinema Mode (3D VRM Client)", value=False)
+            
+            with char_col2:
+                avatar_options = {
+                    "🤖 Konecta Neo (Standard)": "5084648674725325209.vrm",
+                    "🌟 Konecta Prime (High-Fidelity)": "4152045953412205614.vrm",
+                    "🎬 Konecta Elite (Studio)": "VRM1_Constraint_Twist_Sample.vrm"
+                }
+                selected_avatar_name = st.selectbox("Select Digital Human:", list(avatar_options.keys()), index=0)
+                vrm_path = avatar_options[selected_avatar_name]
+
             words = st.session_state.get('last_words', [])
             full_dna = st.session_state.get('full_dna')
             
             if cinema_mode:
-                st.markdown("### 🎬 Cinema Mode: High-Fidelity 3D Avatar")
+                st.markdown(f"### 🎬 Cinema Mode: {selected_avatar_name}")
                 dna_json = core.get_words_dna_json(words)
                 if dna_json:
                     import json
                     import base64
                     
                     # Embed local VRM model for stability
-                    vrm_path = "5084648674725325209.vrm" # New VRM with BlendShapes
                     vrm_base64 = ""
                     if os.path.exists(vrm_path):
                         with open(vrm_path, "rb") as f:
                             vrm_base64 = base64.b64encode(f.read()).decode()
                     else:
-                        st.error("❌ VRM Model file not found. Please upload 'VRM1_Constraint_Twist_Sample.vrm' to the app directory.")
+                        st.error(f"❌ VRM Model '{vrm_path}' not found. Please ensure it is in the project directory.")
+                        st.stop()
                     
-                    st.info("🤖 **Local VRM Bridge Active** | Transmitting Skeletal DNA...")
+                    st.info(f"🤖 **{selected_avatar_name} Bridge Active** | Transmitting Skeletal DNA...")
                     
                     html_component = """
                     <!DOCTYPE html>
