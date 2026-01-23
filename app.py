@@ -12,14 +12,26 @@ import cv2
 WRITABLE_BASE = os.path.join(tempfile.gettempdir(), "slt_persistent_storage")
 os.makedirs(WRITABLE_BASE, exist_ok=True)
 
-_orig_makedirs = os.makedirs
-_orig_mkdir = os.mkdir
-_orig_open = builtins.open
-_orig_rename = os.rename
-_orig_replace = os.replace
-_orig_exists = os.path.exists
-_orig_isfile = os.path.isfile
-_orig_listdir = os.listdir
+# Streamlit reruns the script; we must ensure we don't patch a patch (Recursion Error)
+if not hasattr(builtins, "_slt_patches_applied"):
+    builtins._slt_orig_makedirs = os.makedirs
+    builtins._slt_orig_mkdir = os.mkdir
+    builtins._slt_orig_open = builtins.open
+    builtins._slt_orig_rename = os.rename
+    builtins._slt_orig_replace = os.replace
+    builtins._slt_orig_exists = os.path.exists
+    builtins._slt_orig_isfile = os.path.isfile
+    builtins._slt_orig_listdir = os.path.listdir
+    builtins._slt_patches_applied = True
+
+_orig_makedirs = builtins._slt_orig_makedirs
+_orig_mkdir = builtins._slt_orig_mkdir
+_orig_open = builtins._slt_orig_open
+_orig_rename = builtins._slt_orig_rename
+_orig_replace = builtins._slt_orig_replace
+_orig_exists = builtins._slt_orig_exists
+_orig_isfile = builtins._slt_orig_isfile
+_orig_listdir = builtins._slt_orig_listdir
 
 def _get_shadow_path(path):
     if not path: return path
@@ -70,7 +82,7 @@ def _patched_isfile(path):
 def _patched_listdir(path):
     return _orig_listdir(_redirect_read_write(path))
 
-# Apply global patches
+# Apply global patches ONLY once
 os.makedirs = _patched_makedirs
 os.mkdir = _patched_mkdir
 builtins.open = _patched_open
