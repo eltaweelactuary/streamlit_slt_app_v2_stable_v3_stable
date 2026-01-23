@@ -677,29 +677,6 @@ def main():
                 else:
                     st.warning("⚠️ Avatar render requires skeletal DNA.")
 
-    # TAB 2: VIDEO TO TEXT
-    with tab2:
-        st.header("🎥 Sign Language Recognition")
-        
-        # --- SHARED SENTENCE BUILDER UI ---
-        if 'shared_sentence' not in st.session_state:
-            st.session_state['shared_sentence'] = []
-            
-        if st.session_state['shared_sentence']:
-            st.info(f"� **Sentence Builder:** {' '.join(st.session_state['shared_sentence'])}")
-            c1, c2, c3 = st.columns(3)
-            if c1.button("🗑️ Clear", key="clr_shared"):
-                st.session_state['shared_sentence'] = []
-                st.rerun()
-            if c2.button("🚀 Push to Avatar", key="push_shared"):
-                st.session_state['text_input_val'] = " ".join(st.session_state['shared_sentence'])
-                st.success("Sent to Tab 1! Switch tabs to see performance.")
-            st.markdown("---")
-
-    # TAB 2: VIDEO TO TEXT
-    with tab2:
-        st.header("🎥 Sign Language Recognition")
-        
         # --- SHARED SENTENCE BUILDER UI ---
         if 'shared_sentence' not in st.session_state:
             st.session_state['shared_sentence'] = []
@@ -707,10 +684,11 @@ def main():
         if st.session_state['shared_sentence']:
             st.info(f"📝 **Sentence Builder:** {' '.join(st.session_state['shared_sentence'])}")
             c1, c2, c3 = st.columns(3)
-            if c1.button("🗑️ Clear Sentence", key="clr_shared"):
+            # Use unique keys to be safe
+            if c1.button("🗑️ Clear Sentence", key="btn_clr_shared"):
                 st.session_state['shared_sentence'] = []
                 st.rerun()
-            if c2.button("🚀 Push to 3D Avatar", key="push_shared"):
+            if c2.button("🚀 Push to Avatar", key="btn_push_shared"):
                 st.session_state['text_input_val'] = " ".join(st.session_state['shared_sentence'])
                 st.success("✅ Sequence synced to Tab 1!")
             st.markdown("---")
@@ -734,16 +712,21 @@ def main():
             st.video(temp_path)
             
             if st.button("🔍 Recognize & Add Sign"):
-                with st.spinner("🧠 Analyzing Sign Motion..."):
-                    label, confidence = core.predict_sign(temp_path)
-                    if label:
-                        st.success(f"🏆 Recognized: **{label}** ({confidence:.1f}%)")
-                        # Add logic with a confirmation to prevent accidental duplicates
-                        st.session_state['shared_sentence'].append(label)
-                        st.toast(f"Added Word: {label}")
-                        # Optional: small delay or force rerun to update builder UI
-                    else:
-                        st.error("❌ Sign motion not recognized. Please try a clearer movement.")
+                # Track last processed file to prevent double-adding on rerun
+                file_hash = f"{uploaded_file.name}_{uploaded_file.size}"
+                if st.session_state.get('last_proc_vid') == file_hash:
+                    st.warning("⚠️ This clip was already added to the sentence.")
+                else:
+                    with st.spinner("🧠 Analyzing Sign Motion..."):
+                        label, confidence = core.predict_sign(temp_path)
+                        if label:
+                            st.success(f"🏆 Recognized: **{label}** ({confidence:.1f}%)")
+                            st.session_state['shared_sentence'].append(label)
+                            st.session_state['last_proc_vid'] = file_hash
+                            st.toast(f"✅ Added to Builder: {label}")
+                            st.rerun() # Force update of the Builder UI at the top
+                        else:
+                            st.error("❌ Sign motion not recognized. Please try a clearer movement.")
 
     st.markdown("---")
     st.markdown("Designed by **Ahmed Eltaweel** | AI Architect @ Konecta 🚀")
