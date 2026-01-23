@@ -254,40 +254,46 @@ def main():
         st.error("❌ Failed to initialize SLT Core.")
         st.stop()
     
-    # --- NEW: NLP LEMMATIZATION & UI SUGGESTIONS ---
+    # --- REFINED LINGUISTICS & UI ---
     SUGGESTED_SENTENCES = [
-        "hello name my ahmed",
+        "salam my name ahmed",
         "i drink water",
-        "he is eating",
-        "where is school",
-        "she go house"
+        "he eat food",
+        "school where",
+        "how you"
     ]
     
     def preprocess_text(text, vocab):
-        """Simple Lemmatizer: Maps 'eating' -> 'eat', 'books' -> 'book', etc."""
-        tokens = text.lower().replace(",", "").replace(".", "").split()
+        """Refined Lemmatizer: Specifically tuned for PSL/Urdu structures."""
+        # Remove punctuation
+        import string
+        text = text.translate(str.maketrans('', '', string.punctuation))
+        
+        tokens = text.lower().split()
         refined = []
-        stop_words = {"am", "are", "is", "a", "an"} # Auxiliary words traditionally skipped in PSL if not emphasizing state
+        # PSL skip words (Auxiliary verbs not usually signed in basic PSL)
+        stop_words = {"am", "are", "is", "a", "an", "the", "very"}
         
         for w in tokens:
             if w in stop_words and w not in vocab: continue
             
-            # Direct match
+            # 1. Direct match
             if w in vocab:
                 refined.append(w)
                 continue
             
-            # Lemmatization (Suffix Stripping)
+            # 2. Lemmatization (Strip plurals and continuous tense)
             lemma = w
             if w.endswith("ing"): lemma = w[:-3]
-            elif w.endswith("s") and not w.endswith("ss"): lemma = w[:-1]
             elif w.endswith("ed"): lemma = w[:-2]
             elif w.endswith("es"): lemma = w[:-2]
+            elif w.endswith("s") and not w.endswith("ss"): lemma = w[:-1]
             
             if lemma in vocab:
                 refined.append(lemma)
             else:
-                refined.append(w) # Keep as is if unknown
+                # 3. Last fallback: Check if "s" was part of name or unknown
+                refined.append(w) 
         return refined
 
     tab1, tab2 = st.tabs(["📝 Text → Video", "🎥 Video → Text"])
@@ -670,7 +676,30 @@ def main():
 
     # TAB 2: VIDEO TO TEXT
     with tab2:
-        st.header("🎥 Sign Language Video to Text")
+        st.header("🎥 Sign Language Recognition")
+        
+        # --- NEW: LIVE CAMERA OPTION ---
+        st.subheader("📸 Live Camera Recognition")
+        cam_frame = st.camera_input("Snap a photo of your sign!")
+        
+        if cam_frame:
+            with st.spinner("⚡ Instant Recognizing..."):
+                # Save frame to temp file
+                import tempfile
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp_img:
+                    tmp_img.write(cam_frame.getvalue())
+                    tmp_path = tmp_img.name
+                
+                # Recognition logic
+                label, confidence = core.predict_sign(tmp_path)
+                if label:
+                    st.success(f"🏆 Detected: **{label}** ({confidence:.1f}%)")
+                    st.toast(f"Found: {label}!")
+                else:
+                    st.warning("⚠️ Pose unclear. Try adjusting your distance from camera.")
+        
+        st.markdown("---")
+        st.subheader("📤 Upload Video Sign")
         uploaded_file = st.file_uploader("Upload video (.mp4)", type=["mp4", "avi", "mov"])
         
         if uploaded_file:
@@ -679,7 +708,7 @@ def main():
                 f.write(uploaded_file.read())
             st.video(temp_path)
             
-            if st.button("🔍 Recognize Sign"):
+            if st.button("🔍 Recognize Uploaded Sign"):
                 with st.spinner("Analyzing landmarks..."):
                     label, confidence = core.predict_sign(temp_path)
                     if label:
