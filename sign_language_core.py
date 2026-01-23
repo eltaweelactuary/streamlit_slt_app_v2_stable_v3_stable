@@ -83,23 +83,21 @@ class SignLanguageCore:
                 # 1. Happy (Smile) - Ratio of mouth width to face width
                 mouth_width = dist(61, 291)
                 smile_ratio = (mouth_width / face_width)
-                happy = max(0.0, min(1.0, (smile_ratio - 0.45) * 5.0)) # Threshold 0.45, Scale up
+                happy = max(0.0, min(1.0, (smile_ratio - 0.42) * 8.0)) # More sensitive
 
                 # 2. Surprised (Mouth Open)
                 mouth_open = dist(13, 14)
                 open_ratio = (mouth_open / face_height)
-                surprised = max(0.0, min(1.0, (open_ratio - 0.05) * 10.0)) # Threshold 0.05
+                surprised = max(0.0, min(1.0, (open_ratio - 0.03) * 15.0)) 
 
-                # 3. Angry (Brow Furrow) - Inverse inster-brow distance
-                brow_dist = dist(55, 285) # Tighter inner brow
+                # 3. Angry (Brow Furrow)
+                brow_dist = dist(55, 285) 
                 brow_ratio = (brow_dist / face_width)
-                # Normal ~0.25. Angry < 0.20
-                angry = max(0.0, min(1.0, (0.23 - brow_ratio) * 15.0))  
+                angry = max(0.0, min(1.0, (0.24 - brow_ratio) * 20.0))  
                 
-                # 4. Blink (Eye Openness) - Logic reversed (1=Closed, 0=Open for blendshape usually? Or 1=Blink)
-                # VRM Blink: 1.0 = Closed.
+                # 4. Blink (Eye Openness)
                 left_eye_open = dist(159, 145) / face_height
-                blink = 1.0 if left_eye_open < 0.015 else 0.0 # Simple threshold
+                blink = 1.0 if left_eye_open < 0.02 else 0.0 
                 
                 return [happy, surprised, angry, blink]
             except:
