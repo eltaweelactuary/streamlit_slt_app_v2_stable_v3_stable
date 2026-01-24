@@ -384,7 +384,6 @@ class DigitalHumanRenderer:
             draw_points(frame_vec, 0, 21, (56, 189, 248)) # Hands
             draw_points(frame_vec, 63, 21, (56, 189, 248)) 
             draw_points(frame_vec, 126, 33, (34, 197, 94)) # Pose
-            cv2.line(canvas, (0, 40), (width, 40), (56, 189, 248), 1)
             cv2.putText(canvas, "MODE: SKELETAL BENCHMARK", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (56, 189, 248), 1)
             out.write(canvas)
         out.release()

@@ -307,35 +307,70 @@ def main():
     flip_opt = st.sidebar.checkbox("Flip Avatar (180°)", value=False)
     
     def preprocess_text(text, vocab):
-        """Refined Lemmatizer: Specifically tuned for PSL/Urdu structures."""
-        # Remove punctuation
+        """Smart NLP Preprocessor: Fuzzy matching + Extended Lemmatization."""
         import string
-        text = text.translate(str.maketrans('', '', string.punctuation))
+        import difflib
         
+        text = text.translate(str.maketrans('', '', string.punctuation))
         tokens = text.lower().split()
         refined = []
-        # PSL skip words (Auxiliary verbs not usually signed in basic PSL)
-        stop_words = {"am", "are", "is", "a", "an", "the", "very"}
+        
+        # Extended stop words for cleaner PSL output
+        stop_words = {
+            "am", "are", "is", "was", "were", "be", "been", "being",
+            "a", "an", "the", "this", "that", "these", "those",
+            "i", "me", "my", "you", "your", "he", "she", "it", "we", "they",
+            "to", "of", "in", "for", "on", "with", "at", "by", "from",
+            "very", "really", "just", "also", "and", "or", "but", "so",
+            "will", "would", "could", "should", "can", "may", "might",
+            "have", "has", "had", "do", "does", "did", "go", "going", "went"
+        }
+        
+        vocab_keys = list(vocab.keys())
         
         for w in tokens:
-            if w in stop_words and w not in vocab: continue
+            # Skip common stop words
+            if w in stop_words and w not in vocab:
+                continue
             
             # 1. Direct match
             if w in vocab:
                 refined.append(w)
                 continue
             
-            # 2. Lemmatization (Strip plurals and continuous tense)
+            # 2. Extended Lemmatization
             lemma = w
+            # Verb forms
             if w.endswith("ing"): lemma = w[:-3]
+            elif w.endswith("tion"): lemma = w[:-4]
             elif w.endswith("ed"): lemma = w[:-2]
+            elif w.endswith("ied"): lemma = w[:-3] + "y"
+            elif w.endswith("ies"): lemma = w[:-3] + "y"
             elif w.endswith("es"): lemma = w[:-2]
+            elif w.endswith("er"): lemma = w[:-2]
+            elif w.endswith("est"): lemma = w[:-3]
+            elif w.endswith("ly"): lemma = w[:-2]
             elif w.endswith("s") and not w.endswith("ss"): lemma = w[:-1]
             
             if lemma in vocab:
                 refined.append(lemma)
-            else:
-                refined.append(w)
+                continue
+            
+            # 3. Fuzzy Matching (80%+ similarity)
+            matches = difflib.get_close_matches(w, vocab_keys, n=1, cutoff=0.8)
+            if matches:
+                refined.append(matches[0])
+                continue
+            
+            # 4. Try fuzzy on lemma too
+            matches = difflib.get_close_matches(lemma, vocab_keys, n=1, cutoff=0.8)
+            if matches:
+                refined.append(matches[0])
+                continue
+            
+            # 5. Skip unknown words (don't add them to refined list)
+            # This ensures only valid vocabulary words are processed
+        
         return refined
 
     tab1, tab2 = st.tabs(["📝 Text → Video", "🎥 Video → Text"])
@@ -346,7 +381,7 @@ def main():
         if 'text_input_val' not in st.session_state:
             st.session_state['text_input_val'] = ""
 
-        text_input = st.text_input("Enter text (English or Arabic Phonetic):", value=st.session_state['text_input_val'], placeholder="e.g., apple hello world / هللو ورلد", key="main_input")
+        text_input = st.text_input("Enter text (English):", value=st.session_state['text_input_val'], placeholder="e.g., hello world", key="main_input")
         
         # Word Display Grid
         st.markdown("**📖 Supported Vocabulary:**")
@@ -385,13 +420,20 @@ def main():
                         try:
                             status_placeholder.info(f"🔍 Processing: **{w}**")
                             
-                            # Standard synthesis using Urdu mapping
-                            urdu_token = PSL_VOCABULARY[w]
-                            clip = translator.translate(urdu_token)
+                            # ROBUST SYNTHESIS: Try English key first (Native to library)
+                            # This fixes the "token = 'ہیلو'" inference error.
+                            try:
+                                clip = translator.translate(w)
+                            except:
+                                clip = None
                             
                             if clip is None or len(clip) == 0:
-                                # Fallback to English key
-                                clip = translator.translate(w)
+                                # Fallback to Urdu token if English fails
+                                try:
+                                    urdu_token = PSL_VOCABULARY[w]
+                                    clip = translator.translate(urdu_token)
+                                except:
+                                    clip = None
 
                             if clip is not None and len(clip) > 0:
                                 v_clips.append(clip)
@@ -402,7 +444,7 @@ def main():
                                 else:
                                     status_placeholder.warning(f"⚠️ DNA for **{w}** missing in dictionary.")
                             else:
-                                status_placeholder.error(f"❌ Empty result from engine for word: **{w}**")
+                                status_placeholder.error(f"❌ Could not infer sign for word: **{w}**")
                         except Exception as e:
                             status_placeholder.error(f"❌ Error synthesizing **{w}**: {e}")
                     else:
@@ -463,6 +505,7 @@ def main():
             
             if cinema_mode:
                 st.markdown(f"### 🎬 Cinema Mode: {selected_avatar_name}")
+                # Use base keys directly for DNA retrieval to ensure multi-word stitching
                 dna_json = core.get_words_dna_json(words)
                 if dna_json:
                     import json
@@ -693,7 +736,7 @@ def main():
                 st.markdown("### 🤖 Seamless Skeletal")
                 if os.path.exists(st.session_state['skeletal_path']):
                     st.video(st.session_state['skeletal_path'])
-                    st.caption("Internal 'Takhyeet' engine.")
+                    st.caption("Concatenative Synthesis Engine.")
                 
             with col_neo:
                 st.markdown("### 🦾 Neo-Avatar 3D")
@@ -744,7 +787,8 @@ def main():
                         img = frame.to_ndarray(format="bgr24")
                         return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-                webrtc_streamer(
+                # Stabilized WebRTC with async_processing OFF to prevent race conditions
+                webrtc_ctx = webrtc_streamer(
                     key="slt-live",
                     mode=WebRtcMode.SENDRECV,
                     rtc_configuration=RTCConfiguration(
@@ -752,7 +796,10 @@ def main():
                     ),
                     video_processor_factory=SignProcessor,
                     media_stream_constraints={"video": True, "audio": False},
+                    async_processing=False,  # STABILITY FIX: Prevents freeze on state changes
                 )
+                if webrtc_ctx.state.playing:
+                    st.success("🟢 Stream Active")
                 st.info("💡 **Live Logic:** Real-time analysis streams frames directly to the SLT Core.")
             except Exception as e:
                 st.error(f"❌ WebRTC Error: {e}")
