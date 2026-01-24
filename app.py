@@ -109,14 +109,14 @@ def _patched_exists(path):
         _slt_tls.active = False
 
 # Apply surgical patches
-os.makedirs = lambda n, *a, **k: _orig_makedirs(_redirect_path(n, True), *a, **k)
-os.mkdir    = lambda p, *a, **k: _orig_mkdir(_redirect_path(p, True), *a, **k)
+os.makedirs = lambda n, *a, **k: _orig_makedirs(_redirect_path(n, True), *a, **k) if not getattr(_slt_tls, 'active', False) else _orig_makedirs(n, *a, **k)
+os.mkdir    = lambda p, *a, **k: _orig_mkdir(_redirect_path(p, True), *a, **k) if not getattr(_slt_tls, 'active', False) else _orig_mkdir(p, *a, **k)
 builtins.open = _patched_open
 os.rename   = lambda s, d, *a, **k: _orig_rename(_redirect_path(s), _redirect_path(d, True), *a, **k)
 os.replace  = lambda s, d, *a, **k: _orig_replace(_redirect_path(s), _redirect_path(d, True), *a, **k)
 os.path.exists = _patched_exists
 os.path.isfile = lambda p: _orig_isfile(_redirect_path(p))
-os.listdir  = lambda p: _orig_listdir(_redirect_path(p))
+os.path.listdir  = lambda p: _orig_listdir(_redirect_path(p))
 
 # Ensure WRITABLE_BASE exists
 if not _orig_exists(WRITABLE_BASE):
@@ -401,6 +401,12 @@ def main():
             with st.spinner("🧪 Transforming to Digital Avatar..."):
                 # Use our new NLP preprocessor
                 words = preprocess_text(text_input, PSL_VOCABULARY)
+                
+                # Audit Insight: Inform user if words were optimized
+                original_tokens = text_input.lower().split()
+                if len(words) < len(original_tokens) or any(w not in original_tokens for w in words):
+                    st.toast("🔮 NLP: Sentence optimized for Sign Language.")
+                
                 st.session_state['last_words'] = words
                 v_clips = []
                 dna_list = []

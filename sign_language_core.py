@@ -20,6 +20,10 @@ class SignLanguageCore:
         self.model_path = self.models_dir / "clr_model_v2.pkl" # Renamed model path
         
         # Create directories
+        try:
+            self.videos_dir.mkdir(parents=True, exist_ok=True)
+            self.landmarks_dir.mkdir(parents=True, exist_ok=True)
+            self.models_dir.mkdir(parents=True, exist_ok=True)
         except:
             pass
         
@@ -140,6 +144,7 @@ class SignLanguageCore:
                 except:
                     continue
             
+            sequence = self.extract_landmarks_from_video(temp_v, return_sequence=True)
             if sequence is not None:
                 self.landmark_dict[word] = sequence
                 np.save(self.landmarks_dir / f"{word}.npy", sequence)
@@ -178,6 +183,12 @@ class SignLanguageCore:
         
         X = np.array(X_aug)
         y = np.array(y_aug)
+        
+        self.label_encoder = LabelEncoder()
+        y_encoded = self.label_encoder.fit_transform(y)
+        
+        self.classifier = RandomForestClassifier(n_estimators=100, max_depth=15, min_samples_split=5, random_state=42)
+        self.classifier.fit(X, y_encoded)
         
         # Save Model
         with open(self.model_path, 'wb') as f:
@@ -246,21 +257,24 @@ class SignLanguageCore:
         if dna_sequence is None: return None
         json_sequence = []
         for frame in dna_sequence:
-            # We structure this so the 3D engine knows which point is which
+            # Hand landmarks are 21 pts * 3 = 63 features each
+            # Pose landmarks are 33 pts * 3 = 99 features
+            # Expressions (if present) are the remaining features
             frame_data = {
-                "left_hand": frame[0:63].tolist(),    # 21 pts * 3
-                "right_hand": frame[63:126].tolist(), # 21 pts * 3
-                "pose": frame[126:225].tolist()       # 33 pts * 3
+                "left_hand": frame[0:63].tolist(),
+                "right_hand": frame[63:126].tolist(),
+                "pose": frame[126:225].tolist()
             }
             
-            # Extract Expressions if available (Indices 225+)
+            # Dynamic Expression Export
             if len(frame) > 225:
+                # Map available expression floats (happy, surprised, angry, blink)
                 exprs = frame[225:]
                 frame_data["expressions"] = {
-                    "happy": float(exprs[0]),
-                    "surprised": float(exprs[1]),
-                    "angry": float(exprs[2]),
-                    "blink": float(exprs[3])
+                    "happy": float(exprs[0]) if len(exprs) > 0 else 0.0,
+                    "surprised": float(exprs[1]) if len(exprs) > 1 else 0.0,
+                    "angry": float(exprs[2]) if len(exprs) > 2 else 0.0,
+                    "blink": float(exprs[3]) if len(exprs) > 3 else 0.0
                 }
             else:
                 frame_data["expressions"] = {"happy": 0.0, "surprised": 0.0, "angry": 0.0, "blink": 0.0}
@@ -278,7 +292,7 @@ class SignLanguageCore:
         
         if not dna_sequences: return None
         
-        from sign_language_core import DigitalHumanRenderer
+        # Use existing instance if possible or create a localized one safely
         renderer = DigitalHumanRenderer()
         full_seq = renderer.stitch_landmarks(dna_sequences)
         return self.export_dna_json(full_seq)
