@@ -228,7 +228,9 @@ st.markdown("""
 PSL_VOCABULARY = {
     # Base Tokens (Urdu)
     "apple": "سیب", "world": "دنيا", "good": "اچھا", "hello": "ہیلو",
-    "salam": "سلام", "water": "پانی", "food": "کھانا", "school": "اسكول"
+    "salam": "سلام", "water": "پانی", "food": "کھانا", "school": "اسكول",
+    "mother": "ماں", "father": "باپ", "help": "مدد", "thanks": "شکریہ",
+    "home": "گھر", "yes": "ہاں", "no": "نہیں"
 }
 
 # App Data Paths
@@ -391,15 +393,19 @@ def main():
 
         text_input = st.text_input("Enter text (English):", value=st.session_state['text_input_val'], placeholder="e.g., hello world", key="main_input")
         
-        # Word Display Grid - Only show words that have valid landmarks
+        # Enhanced Vocabulary Grid
+        st.markdown("**📖 Supported Vocabulary (Active & Pending):**")
+        all_keys = list(PSL_VOCABULARY.keys())
         available_words = core.get_available_words()
-        if available_words:
-            st.markdown("**📖 Available Vocabulary:**")
-            cols = st.columns(4)
-            for i, k in enumerate(available_words):
-                cols[i%4].code(k)
-        else:
-            st.warning("⚠️ No vocabulary available yet. First run will download and build landmarks.")
+        
+        grid_cols = st.columns(4)
+        for idx, k in enumerate(all_keys):
+            with grid_cols[idx % 4]:
+                if k in available_words:
+                    st.markdown(f"✅ `{k}`")
+                else:
+                    st.markdown(f"⏳ `{k}`")
+        st.caption("💡 **Active (✅):** Ready to use. | **Pending (⏳):** Click 'Force Retrain' in sidebar to activate.")
         
         col1, col2 = st.columns([1, 1])
         with col1:
@@ -831,21 +837,25 @@ def main():
                     else:
                         if col1.button("⏹️ Stop & Transcribe", use_container_width=True):
                             st.session_state.recording = False
-                            # Drain queue into session state
-                            while not webrtc_ctx.video_processor.frame_queue.empty():
-                                st.session_state.recorded_frames.append(webrtc_ctx.video_processor.frame_queue.get())
+                            # Drain queue into session state with progress
+                            with st.status("📥 Fetching frames...", expanded=False) as status:
+                                while not webrtc_ctx.video_processor.frame_queue.empty():
+                                    st.session_state.recorded_frames.append(webrtc_ctx.video_processor.frame_queue.get())
+                                status.update(label=f"✅ {len(st.session_state.recorded_frames)} frames captured", state="complete")
                             
                             if len(st.session_state.recorded_frames) > 10:
-                                with st.spinner("🧠 Transcribing Sequence..."):
-                                    # Save to temp file
+                                with st.spinner("🧠 Analyzing Sign Sequence (This may take a moment)..."):
+                                    # Save to temp file - BYPASS THE PATCHED WRITER to skip slow ffmpeg
                                     temp_vid = os.path.join(tempfile.gettempdir(), f"live_rec_{int(time.time())}.mp4")
                                     h, w, _ = st.session_state.recorded_frames[0].shape
-                                    out = cv2.VideoWriter(temp_vid, cv2.VideoWriter_fourcc(*'mp4v'), 20.0, (w, h))
+                                    # Use _orig_VideoWriter directly to skip the H.264 optimization (not needed for analysis)
+                                    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                                    out = _orig_VideoWriter(temp_vid, fourcc, 20.0, (w, h))
                                     for f in st.session_state.recorded_frames:
                                         out.write(f)
                                     out.release()
                                     
-                                    # Predict
+                                    # Predict using the temporal engine
                                     labels, conf = core.predict_sentence(temp_vid)
                                     if labels:
                                         st.session_state.live_label = " ".join(labels)
@@ -854,9 +864,9 @@ def main():
                                             if not st.session_state['shared_sentence'] or st.session_state['shared_sentence'][-1] != lbl:
                                                 st.session_state['shared_sentence'].append(lbl)
                                     else:
-                                        st.error("❌ Recognition failed. Try again with clearer signs.")
+                                        st.error("❌ Recognition failed. Try signing closer to the camera with distinct pauses.")
                             else:
-                                st.warning("⚠️ Recording too short.")
+                                st.warning("⚠️ Recording too short. Please capture at least 1 second of signing.")
                             st.rerun()
 
                 if "live_label" in st.session_state and st.session_state.live_label:

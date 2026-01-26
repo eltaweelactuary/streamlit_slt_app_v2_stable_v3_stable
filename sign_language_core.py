@@ -47,7 +47,7 @@ class SignLanguageCore:
         self.classifier = None
         self.label_encoder = None
         
-        # Core Vocabulary (Stable 8)
+        # Core Vocabulary (Elite 15)
         self.vocabulary = {
             "apple": "سیب", "world": "دنيا", "good": "اچھا", "hello": "ہیلو",
             "salam": "سلام", "water": "پانی", "food": "کھانا", "school": "اسكول",
