@@ -50,7 +50,9 @@ class SignLanguageCore:
         # Core Vocabulary (Stable 8)
         self.vocabulary = {
             "apple": "سیب", "world": "دنيا", "good": "اچھا", "hello": "ہیلو",
-            "salam": "سلام", "water": "پانی", "food": "کھانا", "school": "اسكول"
+            "salam": "سلام", "water": "پانی", "food": "کھانا", "school": "اسكول",
+            "mother": "ماں", "father": "باپ", "help": "مدد", "thanks": "شکریہ",
+            "home": "گھر", "yes": "ہاں", "no": "نہیں"
         }
 
     def extract_landmarks_from_video(self, video_path, max_frames=60, return_sequence=True):

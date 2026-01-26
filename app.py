@@ -303,6 +303,17 @@ def main():
     st.sidebar.info("🖥️ **Mode:** Forced Desktop (Computer View)")
     flip_opt = st.sidebar.checkbox("Flip Avatar (180°)", value=False)
     
+    if st.sidebar.button("🧠 Force Retrain Engine"):
+        with st.sidebar.status("🧠 Retraining with Expanded Vocab...", expanded=True) as status:
+            st.write("📥 Syncing Landmarks...")
+            core.build_landmark_dictionary(translator)
+            st.write("🧪 Training RF Matrix...")
+            if core.train_core():
+                status.update(label="✅ Training Complete!", state="complete")
+                st.success("Model updated with latest vocabulary!")
+            else:
+                status.update(label="❌ Training Failed", state="error")
+    
     def preprocess_text(text, vocab):
         """Smart NLP Preprocessor: Fuzzy matching + Extended Lemmatization."""
         import string
@@ -776,41 +787,90 @@ def main():
         live_mode = st.toggle("⚡ Enable Live Streaming (Continuous Analysis)", value=False)
         
         if live_mode:
-            st.subheader("🌐 Live WebRtc Stream")
-            st.warning("⚠️ Live analysis works best with a stable internet connection.")
+            st.subheader("🌐 Live Hybrid recording")
+            st.markdown("1. **Start Stream** | 2. **Record Sign** | 3. **Get Transcription**")
             
             try:
                 from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
                 import av
-                
-                if "live_label" not in st.session_state:
-                    st.session_state.live_label = ""
+                import queue
+
+                # State for recording
+                if "recording" not in st.session_state: st.session_state.recording = False
+                if "recorded_frames" not in st.session_state: st.session_state.recorded_frames = []
 
                 class SignProcessor:
                     def __init__(self):
-                        self.frame_count = 0
-                        self.sequence = []
+                        self.frame_queue = queue.Queue()
 
                     def recv(self, frame):
                         img = frame.to_ndarray(format="bgr24")
+                        # Always put in queue for the main thread to handle if recording
+                        self.frame_queue.put(img)
                         return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-                # Stabilized WebRTC with async_processing OFF to prevent race conditions
                 webrtc_ctx = webrtc_streamer(
-                    key="slt-live",
+                    key="slt-live-radical",
                     mode=WebRtcMode.SENDRECV,
                     rtc_configuration=RTCConfiguration(
                         {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
                     ),
                     video_processor_factory=SignProcessor,
                     media_stream_constraints={"video": True, "audio": False},
-                    async_processing=False,  # STABILITY FIX: Prevents freeze on state changes
+                    async_processing=True, # We use queue for recording
                 )
-                if webrtc_ctx.state.playing:
-                    st.success("🟢 Stream Active")
-                st.info("💡 **Live Logic:** Real-time analysis streams frames directly to the SLT Core.")
+
+                col1, col2 = st.columns(2)
+                
+                if webrtc_ctx.video_processor:
+                    if not st.session_state.recording:
+                        if col1.button("🔴 Start Recording", use_container_width=True):
+                            st.session_state.recording = True
+                            st.session_state.recorded_frames = []
+                            st.rerun()
+                    else:
+                        if col1.button("⏹️ Stop & Transcribe", use_container_width=True):
+                            st.session_state.recording = False
+                            # Drain queue into session state
+                            while not webrtc_ctx.video_processor.frame_queue.empty():
+                                st.session_state.recorded_frames.append(webrtc_ctx.video_processor.frame_queue.get())
+                            
+                            if len(st.session_state.recorded_frames) > 10:
+                                with st.spinner("🧠 Transcribing Sequence..."):
+                                    # Save to temp file
+                                    temp_vid = os.path.join(tempfile.gettempdir(), f"live_rec_{int(time.time())}.mp4")
+                                    h, w, _ = st.session_state.recorded_frames[0].shape
+                                    out = cv2.VideoWriter(temp_vid, cv2.VideoWriter_fourcc(*'mp4v'), 20.0, (w, h))
+                                    for f in st.session_state.recorded_frames:
+                                        out.write(f)
+                                    out.release()
+                                    
+                                    # Predict
+                                    labels, conf = core.predict_sentence(temp_vid)
+                                    if labels:
+                                        st.session_state.live_label = " ".join(labels)
+                                        # Add to shared sentence
+                                        for lbl in labels:
+                                            if not st.session_state['shared_sentence'] or st.session_state['shared_sentence'][-1] != lbl:
+                                                st.session_state['shared_sentence'].append(lbl)
+                                    else:
+                                        st.error("❌ Recognition failed. Try again with clearer signs.")
+                            else:
+                                st.warning("⚠️ Recording too short.")
+                            st.rerun()
+
+                if "live_label" in st.session_state and st.session_state.live_label:
+                    st.success(f"🏆 Recognized: **{st.session_state.live_label}**")
+                
+                if st.session_state.recording:
+                    st.toast("🎥 Recording in progress...")
+                    # In a real app we'd drain the queue periodically to avoid OOM
+                    # For POC we drain when stopping.
+                    while webrtc_ctx.video_processor and not webrtc_ctx.video_processor.frame_queue.empty():
+                        st.session_state.recorded_frames.append(webrtc_ctx.video_processor.frame_queue.get())
+
             except Exception as e:
-                st.error(f"❌ WebRTC Error: {e}")
+                st.error(f"❌ Radical Live Error: {e}")
 
         else:
             st.subheader("🔴 Live Video Analysis")
