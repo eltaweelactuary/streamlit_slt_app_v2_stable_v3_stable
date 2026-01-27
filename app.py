@@ -970,7 +970,10 @@ def main():
                     
                     st.video(temp_path)
                     
-                    if st.button("🔍 Recognize Sentence", key="btn_recognize"):
+                    # Two buttons: one for text only, one for text + speech
+                    col_btn1, col_btn2 = st.columns(2)
+                    
+                    if col_btn1.button("🔍 Recognize Text", key="btn_recognize"):
                         with st.spinner("🧠 Analyzing Sign Sequences..."):
                             labels, confidence = core.predict_sentence(temp_path)
                             if labels:
@@ -982,6 +985,37 @@ def main():
                                 for label in labels:
                                     if not st.session_state['shared_sentence'] or st.session_state['shared_sentence'][-1] != label:
                                         st.session_state['shared_sentence'].append(label)
+                            else:
+                                st.error("❌ Recognition failed. Please try a clearer video with distinct pauses between signs.")
+                    
+                    # NEW: One-click Video → Speech conversion
+                    if col_btn2.button("🔊 Recognize & Speak", key="btn_recognize_speak"):
+                        with st.spinner("🧠 Analyzing Sign Language Video..."):
+                            labels, confidence = core.predict_sentence(temp_path)
+                            if labels:
+                                sentence = " ".join(labels)
+                                result_text = f"🏆 Sequence: **{sentence}** ({confidence:.1f}%)"
+                                st.session_state['last_results'][file_id] = result_text
+                                
+                                # Add to shared sentence
+                                for label in labels:
+                                    if not st.session_state['shared_sentence'] or st.session_state['shared_sentence'][-1] != label:
+                                        st.session_state['shared_sentence'].append(label)
+                                
+                                # Automatically convert to speech
+                                st.success(result_text)
+                                with st.spinner("🔊 Converting to Speech..."):
+                                    try:
+                                        from gtts import gTTS
+                                        tts = gTTS(text=sentence, lang='en')
+                                        audio_file = os.path.join(tempfile.gettempdir(), f"tts_{file_id}.mp3")
+                                        tts.save(audio_file)
+                                        with open(audio_file, "rb") as f:
+                                            audio_bytes = f.read()
+                                        st.audio(audio_bytes, format="audio/mp3", autoplay=True)
+                                        st.info(f"🎤 **Speaking:** {sentence}")
+                                    except Exception as e:
+                                        st.error(f"❌ TTS Error: {e}")
                             else:
                                 st.error("❌ Recognition failed. Please try a clearer video with distinct pauses between signs.")
                     
