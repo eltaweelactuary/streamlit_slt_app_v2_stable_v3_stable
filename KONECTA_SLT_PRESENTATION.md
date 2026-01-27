@@ -85,9 +85,26 @@ sequenceDiagram
 
 ## 🚀 5. Roadmap: From PoC to Production
 
-> [!IMPORTANT]
-> **Key Objective for Next Phase:**
-> Expand the "Landmark Dictionary" to include **500+ common workplace phrases** and integrate an LLM for intent-based translation.
+### Phase 2: High-Performance Live Analysis
+- **Live Streaming Core:** Transition from "Record & Transcribe" to active **Live Stream Translation**.
+- **Resource Requirement:** Moving to GPU-accelerated servers (e.g., NVIDIA A100/T4) for real-time inference latency < 100ms.
+- **Instant Response:** Instantaneous text-to-avatar and sign-to-text feedback loops.
+
+### Phase 3: Enterprise Vocabulary Expansion
+- Target: **1,000+ signs** covering technical, corporate, and medical terminology.
+- Integration of a Large Language Model (LLM) for contextual translation (Syntax Correction).
+
+---
+
+## 📹 6. Best Practices: Building the Video Dictionary
+
+Building a high-accuracy sign dictionary requires a standardized "Studio Pipeline":
+
+1. **Professional Environment:** Neutral, non-distracting background (Slate or Green) with 3-point lighting to minimize finger shadows.
+2. **Native Signers Only:** Collaborating with certified PSL linguists to ensure "Visual Grammar" accuracy.
+3. **Multi-Angle Capture:** Recording from front and 45-degree angles to capture 3D depth precisely.
+4. **DNA Cleaning (Automated):** Running videos through a "Differentiator Filter" to remove non-sign motion and isolate the peak skeletal state.
+5. **Standardized Benchmarking:** Every sign must be verified by at least 2 native signers before being converted to a "Gold Standard DNA Matrix".
 
 **Ahmed Eltaweel** | *AI Architect @ Konecta* 🚀
-**Technology:** MediaPipe, SLT Concatenative Engine, Three.js, Streamlit.
+**Technology:** MediaPipe, SLT Concatenative Engine, Three.js, GPU-Acceleration.
