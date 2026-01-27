@@ -1,15 +1,15 @@
 # 🚀 Executive Presentation: Konecta SLT Platform v2.0
 
-## 🎯 The Vision
-Empowering the Deaf community through a **State-of-the-Art (SOTA) Bidirectional Interface**. Konecta SLT bridges the communication gap by translating real-time sign language into text/speech and vice-versa using stylized **Digital Human Synthesis**.
+## 🎯 Our Vision
+Empowering the Deaf and Hard-of-Hearing community through a **State-of-the-Art (SOTA) Bidirectional Translation Interface**. Konecta SLT bridges the communication gap by translating real-time sign language into text and speech—and vice versa—using advanced **Digital Human Synthesis**.
 
 ![Digital Human Avatar Concept](digital_human_concept.png)
 
 ---
 
-## 🏗️ 1. Technical Framework (The Core)
+## 🏗️ 1. Technical Framework
 
-The system operates on a **Unified Common Landmark Representation (CLR)**, ensuring that both recognition and synthesis share the same mathematical "DNA".
+The system operates on a **Unified Common Landmark Representation (CLR)**, ensuring that both recognition and synthesis modules share the same mathematical "DNA."
 
 ```mermaid
 graph TD
@@ -35,52 +35,51 @@ graph TD
     K --> L
 ```
 
-### 📖 تعريف كل مرحلة (Stage Definitions)
+### 📖 Stage Definitions
 
-#### 🔹 Input Layer (طبقة الإدخال)
-| المكون | الوصف |
-|--------|-------|
-| **A - Text/Speech/Video** | نقطة دخول البيانات - يمكن للمستخدم إدخال نص مكتوب، كلام صوتي، أو فيديو لغة إشارة |
-| **B - Process Type** | موزع ذكي يحدد نوع المعالجة المطلوبة (تركيب أو تعرف) |
+#### 🔹 Input Layer
+| Component | Description |
+|-----------|-------------|
+| **A – Text/Speech/Video** | The data entry point. Users can input written text, spoken audio, or sign language video. |
+| **B – Process Type** | An intelligent router that determines the required processing path (Synthesis or Recognition). |
 
-#### 🔹 Synthesis Engine (محرك التركيب - النص ← الإشارة)
-| المكون | الوصف |
-|--------|-------|
-| **D - NLP Lemmatizer** | معالج لغوي يحول الجمل لأصلها ويحذف الكلمات الزائدة (مثل: "going" → "go") |
-| **E - Skeletal DNA Lookup** | البحث في قاموس الـ DNA العظمي لاسترجاع مصفوفة الحركة لكل كلمة |
-| **F - Motion Interpolation** | تنعيم الانتقال بين الإشارات باستخدام Linear Interpolation لحركة سلسة |
-| **G - 3D VRM Avatar Render** | رسم الأفاتار ثلاثي الأبعاد وتحريكه بناءً على مصفوفات الـ DNA |
+#### 🔹 Synthesis Engine (Text → Sign)
+| Component | Description |
+|-----------|-------------|
+| **D – NLP Lemmatizer** | A linguistic processor that reduces words to their base form and removes stop words (e.g., "going" → "go"). |
+| **E – Skeletal DNA Lookup** | Retrieves the motion matrix for each word from the skeletal DNA dictionary. |
+| **F – Motion Interpolation** | Applies linear interpolation to smooth transitions between consecutive signs. |
+| **G – 3D VRM Avatar Render** | Renders and animates the 3D avatar based on the DNA motion matrices. |
 
-#### 🔹 Recognition Engine (محرك التعرف - الإشارة ← النص)
-| المكون | الوصف |
-|--------|-------|
-| **H - MediaPipe Tracking** | تتبع 75+ نقطة عظمية (21 لكل يد + 33 للجسم) باستخدام MediaPipe Holistic |
-| **I - Feature Normalization** | تطبيع الإحداثيات نسبياً (مركزها الأنف) لضمان الدقة بغض النظر عن المسافة |
-| **J - Random Forest ML Model** | نموذج تصنيف يقارن الحركة الحية بقاموس الـ DNA ويحدد الكلمة (دقة تصل 98.83%) |
-| **K - Sentence Construction** | بناء الجملة من الكلمات المُتعرَّف عليها مع مراعاة التسلسل الزمني |
+#### 🔹 Recognition Engine (Sign → Text)
+| Component | Description |
+|-----------|-------------|
+| **H – MediaPipe Tracking** | Tracks 75+ skeletal points (21 per hand + 33 body landmarks) using MediaPipe Holistic. |
+| **I – Feature Normalization** | Normalizes coordinates relative to the nose, ensuring accuracy regardless of camera distance. |
+| **J – Random Forest ML Model** | A classification model that compares live motion against the DNA dictionary, achieving up to 98.83% accuracy. |
+| **K – Sentence Construction** | Assembles recognized words into coherent sentences while preserving temporal order. |
 
-#### 🔹 Output Layer (طبقة الإخراج)
-| المكون | الوصف |
-|--------|-------|
-| **L - User Display** | عرض النتيجة النهائية (فيديو الأفاتار أو النص المُترجَم) |
+#### 🔹 Output Layer
+| Component | Description |
+|-----------|-------------|
+| **L – User Display** | Presents the final output: an avatar video or transcribed text. |
 
 ---
 
 ## 🧬 2. Performance & Technical Depth
 
-Behind the interface lies a robust pipeline optimized for web stability and accuracy.
+Behind the intuitive interface lies a robust pipeline optimized for web stability and high accuracy.
 
-- **🎨 Digital Human UX:** Uses professional 3D VRM rigging. **Bone Batching** saves ~10-15% CPU overhead by offloading skeletal calculations to GPU. *(Source: Unity, Three.js Research)*
-- **🧩 Skeletal DNA (CLR):** Every sign is stored as a lightweight DNA matrix. No heavy video files needed.
-- **🧠 Accuracy & Scaling:** 50+ synthetic variations generated per landmark. Research shows this approach can improve accuracy by up to **19%**. *(Source: arXiv, IEEE)*
-- **⚡ MediaPipe Performance:** Achieves **15-80ms latency** depending on complexity (Lite/Full/Heavy modes). *(Source: Google Research)*
-
+- **🎨 Digital Human UX:** Utilizes professional 3D VRM rigging. **Bone Batching** reduces CPU overhead by approximately 10–15% by offloading skeletal calculations to the GPU. *(Source: Unity, Three.js Research)*
+- **🧩 Skeletal DNA (CLR):** Each sign is stored as a lightweight DNA matrix, eliminating the need for heavy video files.
+- **🧠 Accuracy & Scaling:** Generates 50+ synthetic variations per landmark. Research indicates this approach can improve accuracy by up to **19%**. *(Source: arXiv, IEEE)*
+- **⚡ MediaPipe Performance:** Achieves **15–80 ms latency** depending on model complexity (Lite/Full/Heavy modes). *(Source: Google Research)*
 
 ---
 
-## 🔄 3. User Experience Flow (The Journey)
+## 🔄 3. User Experience Flow
 
-How the system handles a complex query like **"Is he going to school?"**
+The following diagram illustrates how the system processes a complex query such as **"Is he going to school?"**
 
 ```mermaid
 sequenceDiagram
@@ -91,7 +90,7 @@ sequenceDiagram
 
     User->>NLP: "Is he going to school?"
     Note over NLP: Remove Stop Words: [Is, to]
-    Note over NLP: Converting [going] -> [go]
+    Note over NLP: Lemmatize: [going] → [go]
     NLP-->>DNA: Request [he, go, school]
     DNA-->>Avatar: Stream Skeletal Matrices
     Avatar->>Avatar: Motion Stitching
@@ -104,49 +103,50 @@ sequenceDiagram
 
 | Metric | Industry Standard | Konecta SLT v2.0 |
 | :--- | :--- | :--- |
-| **Normalization** | Fixed Pixel Mapping | **Nose-Centered Relative** |
+| **Normalization** | Fixed Pixel Mapping | **Nose-Centered Relative Coordinates** |
 | **Classification** | Basic SVM / KNN | **Augmented Random Forest** (up to 98.83% accuracy*) |
-| **Efficiency** | Full Body Rendering | **Bone Batching** (GPU-Optimized) |
-| **Dictionary Search** | Word-for-Word | **Lemmatized NLP Mapping** |
+| **Rendering Efficiency** | Full-Body Rendering | **Bone Batching** (GPU-Optimized) |
+| **Dictionary Search** | Word-for-Word Matching | **Lemmatized NLP Mapping** |
 
-*\*Research: RF with MediaPipe achieves 98.83% in SLR tasks. (JISEM Journal, 2023)*
+*\*Research: Random Forest with MediaPipe achieves 98.83% accuracy in SLR tasks. (JISEM Journal, 2023)*
 
 ### Dictionary Research Progress
-- **Egyptian Sign Language (ESL):** ~3,000 Signs. *(Source: ResearchGate, Arabic SL Dictionary)*
-- **Saudi Sign Language (SSL):** 2,700+ Signs (2014 Dictionary), thousands more in 2018 edition. *(Source: Wikipedia, Arab News)*
-- **Konecta Status:** **Stable 8** words fully synchronized.
+- **Egyptian Sign Language (ESL):** Approximately 3,000 signs documented. *(Source: ResearchGate, Arabic SL Dictionary)*
+- **Saudi Sign Language (SSL):** Over 2,700 signs (2014 Dictionary); thousands more added in the 2018 edition. *(Source: Wikipedia, Arab News)*
+- **Konecta Current Status:** **Stable 8** core vocabulary words fully synchronized.
 
 ---
 
 ## 🚀 5. Roadmap: From PoC to Production
 
 ### Phase 2: High-Performance Live Analysis
-- **Live Streaming Core:** Transition from "Record & Transcribe" to active **Live Stream Translation**.
-- **Resource Requirement:** Moving to GPU-accelerated servers:
-  - **NVIDIA T4:** Cost-effective (~$2,500), suitable for PoC, ~1ms latency for lightweight inference.
-  - **NVIDIA A100:** Enterprise-grade (~$30,000), 142 detections/sec, <100ms latency. *(Source: NVIDIA)*
-- **Instant Response:** Instantaneous text-to-avatar and sign-to-text feedback loops.
+- **Live Streaming Core:** Transition from the current "Record & Transcribe" workflow to active **Real-Time Live Stream Translation**.
+- **Infrastructure Requirements:** Migration to GPU-accelerated servers:
+  - **NVIDIA T4:** Cost-effective solution (~$2,500), suitable for PoC environments, achieving ~1 ms latency for lightweight inference.
+  - **NVIDIA A100:** Enterprise-grade solution (~$30,000), delivering 142 detections per second with sub-100 ms latency. *(Source: NVIDIA)*
+- **Instant Response:** Enable instantaneous text-to-avatar and sign-to-text feedback loops.
 
 ### Phase 3: Enterprise Vocabulary Expansion
-- Target: **1,000+ signs** covering technical, corporate, and medical terminology.
-- Integration of a Large Language Model (LLM) for contextual translation (Syntax Correction).
+- **Target:** Expand the dictionary to **1,000+ signs**, covering technical, corporate, and medical terminology.
+- **LLM Integration:** Incorporate a Large Language Model for context-aware translation and syntax correction.
 
 ---
 
-## 📹 6. Best Practices: Building the Video Dictionary
+## 📹 6. Best Practices: Building a High-Quality Video Dictionary
 
-Building a high-accuracy sign dictionary requires a standardized "Studio Pipeline":
+Constructing a high-accuracy sign language dictionary requires a standardized "Studio Pipeline":
 
-1. **Professional Environment:** Neutral, non-distracting background (Slate or Green) with 3-point lighting to minimize finger shadows.
-2. **Native Signers Only:** Collaborating with certified PSL linguists to ensure "Visual Grammar" accuracy.
-3. **Multi-Angle Capture:** Recording from front and 45-degree angles to capture 3D depth precisely.
-4. **DNA Cleaning (Automated):** Running videos through a "Differentiator Filter" to remove non-sign motion and isolate the peak skeletal state.
-5. **Standardized Benchmarking:** Every sign must be verified by at least 2 native signers before being converted to a "Gold Standard DNA Matrix".
-6. **Temporal Augmentation:** Research shows this technique alone can improve accuracy from 19% to 93%. *(Source: Medium, IEEE)*
+1. **Professional Recording Environment:** Use a neutral, non-distracting background (e.g., slate gray or green screen) with three-point lighting to minimize finger shadows.
+2. **Native Signers Only:** Collaborate with certified sign language linguists to ensure accurate "Visual Grammar."
+3. **Multi-Angle Capture:** Record from both front-facing and 45-degree angles to capture precise 3D depth information.
+4. **Automated DNA Cleaning:** Process videos through a "Differentiator Filter" to remove non-sign motion and isolate peak skeletal states.
+5. **Standardized Benchmarking:** Every sign must be verified by at least two native signers before conversion to a "Gold Standard DNA Matrix."
+6. **Temporal Augmentation:** Research demonstrates that this technique alone can improve recognition accuracy from 19% to 93%. *(Source: Medium, IEEE)*
 
 ---
 
-**Ahmed Eltaweel** | *AI Architect @ Konecta* 🚀
-**Technology:** MediaPipe, SLT Concatenative Engine, Three.js, GPU-Acceleration.
+**Ahmed Eltaweel** | *AI Solutions Architect @ Konecta* 🚀
 
-*All claims verified via peer-reviewed research and official documentation (Google Research, NVIDIA, IEEE, arXiv).*
+**Technology Stack:** MediaPipe Holistic, SLT Concatenative Engine, Three.js, GPU-Accelerated Inference
+
+*All claims have been verified using peer-reviewed research and official documentation from Google Research, NVIDIA, IEEE, and arXiv.*
