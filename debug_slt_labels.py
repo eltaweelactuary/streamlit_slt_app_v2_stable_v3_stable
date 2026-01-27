@@ -1,16 +1,20 @@
 import sign_language_translator as slt
-import os
 
-def find_labels():
+def find_all_labels():
+    # Stable 8 vocabulary
     words = {
+        "apple": "سیب",
+        "world": "دنیا",
+        "good": "اچھا",
+        "school": "اسکول",
         "mother": "ماں",
         "father": "باپ",
         "help": "مدد",
-        "thanks": "شکریہ",
         "home": "گھر",
-        "yes": "ہاں",
-        "no": "نہیں"
     }
+    
+    print("CHECKING DNA AVAILABILITY FOR STABLE 8 VOCABULARY")
+    print("-" * 50)
     
     translator = slt.models.ConcatenativeSynthesis(
         text_language="urdu",
@@ -18,17 +22,24 @@ def find_labels():
         sign_format="vid"
     )
     
+    results = {"success": [], "failed": []}
+    
     for eng, urdu in words.items():
-        print(f"--- Querying: {eng} ({urdu}) ---")
         try:
-            # ConcatenativeSynthesis.translate returns a SignClip
             clip = translator.translate(urdu)
-            print(f"Label/Path: {clip}")
-            # If clip is a SignVideo or similar, it might have a path or label
-            if hasattr(clip, 'sign_filenames'):
-                print(f"Sign Filenames: {clip.sign_filenames}")
+            if clip:
+                print(f"[OK] {eng} -> {urdu}")
+                results["success"].append(eng)
+            else:
+                print(f"[FAIL] {eng} -> {urdu} (No clip)")
+                results["failed"].append(eng)
         except Exception as e:
-            print(f"Error querying {eng}: {e}")
+            print(f"[FAIL] {eng} -> {urdu} ({str(e)[:50]})")
+            results["failed"].append(eng)
+    
+    print("-" * 50)
+    print(f"SUCCESS: {len(results['success'])}/8 - {results['success']}")
+    print(f"FAILED: {len(results['failed'])}/8 - {results['failed']}")
 
 if __name__ == "__main__":
-    find_labels()
+    find_all_labels()
