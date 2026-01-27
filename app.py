@@ -825,6 +825,7 @@ def main():
         
         if camera_mode == "📷 Quick Capture (Recommended)":
             st.markdown("**Instructions:** Click the camera button below, make your sign, and capture the frame.")
+            st.warning("⚠️ Note: Single-frame capture works best for static signs. For dynamic signs, use **Upload Video** below.")
             
             img_file = st.camera_input("📷 Capture your sign gesture")
             
@@ -836,17 +837,56 @@ def main():
                 
                 if img is not None:
                     with st.spinner("🧠 Analyzing captured frame..."):
-                        # Use single-frame prediction
-                        label, confidence = core.predict(img)
-                        
-                        if label and confidence > 0.5:
-                            st.success(f"🏆 Recognized: **{label}** (Confidence: {confidence:.1%})")
-                            
-                            # Add to shared sentence
-                            if not st.session_state['shared_sentence'] or st.session_state['shared_sentence'][-1] != label:
-                                st.session_state['shared_sentence'].append(label)
-                        else:
-                            st.warning("⚠️ Could not recognize the sign. Try again with a clearer gesture.")
+                        try:
+                            # Extract landmarks from single frame using MediaPipe
+                            mp_holistic = mp.solutions.holistic
+                            with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
+                                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                                results = holistic.process(img_rgb)
+                                
+                                # Build landmark vector same as video extraction
+                                landmarks = []
+                                
+                                # Left hand (21 points)
+                                if results.left_hand_landmarks:
+                                    for lm in results.left_hand_landmarks.landmark:
+                                        landmarks.extend([lm.x, lm.y, lm.z])
+                                else:
+                                    landmarks.extend([0.0] * 63)
+                                
+                                # Right hand (21 points)
+                                if results.right_hand_landmarks:
+                                    for lm in results.right_hand_landmarks.landmark:
+                                        landmarks.extend([lm.x, lm.y, lm.z])
+                                else:
+                                    landmarks.extend([0.0] * 63)
+                                
+                                # Pose (33 points - but we use 25 key points)
+                                if results.pose_landmarks:
+                                    key_indices = [0,11,12,13,14,15,16,17,18,19,20,21,22,23,24]
+                                    for idx in key_indices:
+                                        lm = results.pose_landmarks.landmark[idx]
+                                        landmarks.extend([lm.x, lm.y, lm.z])
+                                else:
+                                    landmarks.extend([0.0] * 45)
+                                
+                                # Now predict using landmarks
+                                if len(landmarks) > 0 and sum(landmarks) != 0:
+                                    landmarks_array = np.array(landmarks).reshape(1, -1)
+                                    label, confidence = core.predict_from_landmarks(landmarks_array[0])
+                                    
+                                    if label and confidence > 0.5:
+                                        st.success(f"🏆 Recognized: **{label}** (Confidence: {confidence:.1%})")
+                                        
+                                        # Add to shared sentence
+                                        if not st.session_state['shared_sentence'] or st.session_state['shared_sentence'][-1] != label:
+                                            st.session_state['shared_sentence'].append(label)
+                                    else:
+                                        st.warning("⚠️ Could not recognize the sign. Try again with a clearer gesture.")
+                                else:
+                                    st.warning("⚠️ No hands detected in frame. Please show your hands clearly.")
+                        except Exception as e:
+                            st.error(f"❌ Analysis Error: {e}")
                 else:
                     st.error("❌ Could not process the image. Please try again.")
             
