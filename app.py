@@ -800,140 +800,180 @@ def main():
                 st.success("✅ Sequence synced to Tab 1!")
             st.markdown("---")
 
-        live_mode = st.toggle("⚡ Enable Live Streaming (Continuous Analysis)", value=False)
+        # Camera mode selection
+        st.subheader("🎥 Live Sign Analysis")
+        camera_mode = st.radio(
+            "Choose camera method:",
+            ["📷 Quick Capture (Recommended)", "🌐 Live Stream (Advanced)"],
+            horizontal=True,
+            help="Quick Capture works everywhere. Live Stream requires WebRTC support."
+        )
         
-        if live_mode:
-            st.subheader("🌐 Live Hybrid recording")
-            st.markdown("1. **Start Stream** | 2. **Record Sign** | 3. **Get Transcription**")
+        if camera_mode == "📷 Quick Capture (Recommended)":
+            st.markdown("**Instructions:** Click the camera button below, make your sign, and capture the frame.")
             
-            try:
-                from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
-                import av
-                import queue
-
-                # State for recording
-                if "recording" not in st.session_state: st.session_state.recording = False
-                if "recorded_frames" not in st.session_state: st.session_state.recorded_frames = []
-
-                class SignProcessor:
-                    def __init__(self):
-                        self.frame_queue = queue.Queue()
-
-                    def recv(self, frame):
-                        img = frame.to_ndarray(format="bgr24")
-                        # Always put in queue for the main thread to handle if recording
-                        self.frame_queue.put(img)
-                        return av.VideoFrame.from_ndarray(img, format="bgr24")
-
-                webrtc_ctx = webrtc_streamer(
-                    key="slt-live-radical",
-                    mode=WebRtcMode.SENDRECV,
-                    rtc_configuration=RTCConfiguration(
-                        {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
-                    ),
-                    video_processor_factory=SignProcessor,
-                    media_stream_constraints={"video": True, "audio": False},
-                    async_processing=True, # We use queue for recording
-                )
-
-                col1, col2 = st.columns(2)
+            img_file = st.camera_input("📷 Capture your sign gesture")
+            
+            if img_file is not None:
+                # Decode image
+                import numpy as np
+                file_bytes = np.asarray(bytearray(img_file.read()), dtype=np.uint8)
+                img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
                 
-                if webrtc_ctx.video_processor:
-                    if not st.session_state.recording:
-                        if col1.button("🔴 Start Recording", use_container_width=True):
-                            st.session_state.recording = True
-                            st.session_state.recorded_frames = []
-                            st.rerun()
-                    else:
-                        if col1.button("⏹️ Stop & Transcribe", use_container_width=True):
-                            st.session_state.recording = False
-                            # Drain queue into session state with progress
-                            with st.status("📥 Fetching frames...", expanded=False) as status:
-                                while not webrtc_ctx.video_processor.frame_queue.empty():
-                                    st.session_state.recorded_frames.append(webrtc_ctx.video_processor.frame_queue.get())
-                                status.update(label=f"✅ {len(st.session_state.recorded_frames)} frames captured", state="complete")
+                if img is not None:
+                    with st.spinner("🧠 Analyzing captured frame..."):
+                        # Use single-frame prediction
+                        label, confidence = core.predict(img)
+                        
+                        if label and confidence > 0.5:
+                            st.success(f"🏆 Recognized: **{label}** (Confidence: {confidence:.1%})")
                             
-                            if len(st.session_state.recorded_frames) > 10:
-                                with st.spinner("🧠 Analyzing Sign Sequence (This may take a moment)..."):
-                                    # Save to temp file - BYPASS THE PATCHED WRITER to skip slow ffmpeg
-                                    temp_vid = os.path.join(tempfile.gettempdir(), f"live_rec_{int(time.time())}.mp4")
-                                    h, w, _ = st.session_state.recorded_frames[0].shape
-                                    # Use _orig_VideoWriter directly to skip the H.264 optimization (not needed for analysis)
-                                    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-                                    out = _orig_VideoWriter(temp_vid, fourcc, 20.0, (w, h))
-                                    for f in st.session_state.recorded_frames:
-                                        out.write(f)
-                                    out.release()
-                                    
-                                    # Predict using the temporal engine
-                                    labels, conf = core.predict_sentence(temp_vid)
-                                    if labels:
-                                        st.session_state.live_label = " ".join(labels)
-                                        # Add to shared sentence
-                                        for lbl in labels:
-                                            if not st.session_state['shared_sentence'] or st.session_state['shared_sentence'][-1] != lbl:
-                                                st.session_state['shared_sentence'].append(lbl)
-                                    else:
-                                        st.error("❌ Recognition failed. Try signing closer to the camera with distinct pauses.")
-                            else:
-                                st.warning("⚠️ Recording too short. Please capture at least 1 second of signing.")
-                            st.rerun()
-
-                if "live_label" in st.session_state and st.session_state.live_label:
-                    st.success(f"🏆 Recognized: **{st.session_state.live_label}**")
-                
-                if st.session_state.recording:
-                    st.toast("🎥 Recording in progress...")
-                    # In a real app we'd drain the queue periodically to avoid OOM
-                    # For POC we drain when stopping.
-                    while webrtc_ctx.video_processor and not webrtc_ctx.video_processor.frame_queue.empty():
-                        st.session_state.recorded_frames.append(webrtc_ctx.video_processor.frame_queue.get())
-
-            except Exception as e:
-                st.error(f"❌ Radical Live Error: {e}")
-
-        else:
-            st.subheader("🔴 Live Video Analysis")
-            st.markdown("""**Instructions:** Drop a clear video clip here to recognize the sign.""")
-            
-            if 'last_results' not in st.session_state:
-                st.session_state['last_results'] = {}
-
-            uploaded_file = st.file_uploader("Upload Sign Clip", type=["mp4", "avi", "mov"], key="vid_uploader")
-            
-            if uploaded_file:
-                file_id = f"{uploaded_file.name}_{uploaded_file.size}"
-                
-                # Use a specific temp path for persistence during optimization
-                temp_path = os.path.join(tempfile.gettempdir(), f"upload_{file_id}.mp4")
-                
-                with open(temp_path, "wb") as f:
-                    f.write(uploaded_file.getbuffer())
-                
-                # CRITICAL FIX: Optimize mobile video for OpenCV compatibility
-                with st.spinner("🎬 Optimizing Video for Analysis..."):
-                    _optimize_video_for_web(temp_path)
-                
-                st.video(temp_path)
-                
-                if st.button("🔍 Recognize Sentence", key="btn_recognize"):
-                    with st.spinner("🧠 Analyzing Sign Sequences..."):
-                        labels, confidence = core.predict_sentence(temp_path)
-                        if labels:
-                            sentence = " ".join(labels)
-                            result_text = f"🏆 Sequence: **{sentence}** ({confidence:.1f}%)"
-                            st.session_state['last_results'][file_id] = result_text
-                            
-                            # Add new words to shared sentence if they aren't already there in order
-                            for label in labels:
-                                if not st.session_state['shared_sentence'] or st.session_state['shared_sentence'][-1] != label:
-                                    st.session_state['shared_sentence'].append(label)
+                            # Add to shared sentence
+                            if not st.session_state['shared_sentence'] or st.session_state['shared_sentence'][-1] != label:
+                                st.session_state['shared_sentence'].append(label)
                         else:
-                            st.error("❌ Recognition failed. Please try a clearer video with distinct pauses between signs.")
+                            st.warning("⚠️ Could not recognize the sign. Try again with a clearer gesture.")
+                else:
+                    st.error("❌ Could not process the image. Please try again.")
+            
+            st.info("💡 **Tip:** For video analysis, use the file uploader below or run `standalone_live.py` for desktop mode.")
+        
+        else:  # Live Stream mode
+            live_mode = st.toggle("⚡ Enable Live Streaming", value=False)
+            
+            if live_mode:
+                st.subheader("🌐 Live Hybrid Recording")
+                st.markdown("1. **Start Stream** | 2. **Record Sign** | 3. **Get Transcription**")
                 
-                # Persist result display even after button click
-                if file_id in st.session_state['last_results']:
-                    st.success(st.session_state['last_results'][file_id])
+                try:
+                    from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
+                    import av
+                    import queue
+
+                    # State for recording
+                    if "recording" not in st.session_state: st.session_state.recording = False
+                    if "recorded_frames" not in st.session_state: st.session_state.recorded_frames = []
+
+                    class SignProcessor:
+                        def __init__(self):
+                            self.frame_queue = queue.Queue()
+
+                        def recv(self, frame):
+                            img = frame.to_ndarray(format="bgr24")
+                            # Always put in queue for the main thread to handle if recording
+                            self.frame_queue.put(img)
+                            return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+                    webrtc_ctx = webrtc_streamer(
+                        key="slt-live-radical",
+                        mode=WebRtcMode.SENDRECV,
+                        rtc_configuration=RTCConfiguration(
+                            {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+                        ),
+                        video_processor_factory=SignProcessor,
+                        media_stream_constraints={"video": True, "audio": False},
+                        async_processing=True,
+                    )
+
+                    col1, col2 = st.columns(2)
+                    
+                    if webrtc_ctx.video_processor:
+                        if not st.session_state.recording:
+                            if col1.button("🔴 Start Recording", use_container_width=True):
+                                st.session_state.recording = True
+                                st.session_state.recorded_frames = []
+                                st.rerun()
+                        else:
+                            if col1.button("⏹️ Stop & Transcribe", use_container_width=True):
+                                st.session_state.recording = False
+                                # Drain queue into session state with progress
+                                with st.status("📥 Fetching frames...", expanded=False) as status:
+                                    while not webrtc_ctx.video_processor.frame_queue.empty():
+                                        st.session_state.recorded_frames.append(webrtc_ctx.video_processor.frame_queue.get())
+                                    status.update(label=f"✅ {len(st.session_state.recorded_frames)} frames captured", state="complete")
+                                
+                                if len(st.session_state.recorded_frames) > 10:
+                                    with st.spinner("🧠 Analyzing Sign Sequence (This may take a moment)..."):
+                                        # Save to temp file - BYPASS THE PATCHED WRITER to skip slow ffmpeg
+                                        temp_vid = os.path.join(tempfile.gettempdir(), f"live_rec_{int(time.time())}.mp4")
+                                        h, w, _ = st.session_state.recorded_frames[0].shape
+                                        # Use _orig_VideoWriter directly to skip the H.264 optimization (not needed for analysis)
+                                        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                                        out = _orig_VideoWriter(temp_vid, fourcc, 20.0, (w, h))
+                                        for f in st.session_state.recorded_frames:
+                                            out.write(f)
+                                        out.release()
+                                        
+                                        # Predict using the temporal engine
+                                        labels, conf = core.predict_sentence(temp_vid)
+                                        if labels:
+                                            st.session_state.live_label = " ".join(labels)
+                                            # Add to shared sentence
+                                            for lbl in labels:
+                                                if not st.session_state['shared_sentence'] or st.session_state['shared_sentence'][-1] != lbl:
+                                                    st.session_state['shared_sentence'].append(lbl)
+                                        else:
+                                            st.error("❌ Recognition failed. Try signing closer to the camera with distinct pauses.")
+                                else:
+                                    st.warning("⚠️ Recording too short. Please capture at least 1 second of signing.")
+                                st.rerun()
+
+                    if "live_label" in st.session_state and st.session_state.live_label:
+                        st.success(f"🏆 Recognized: **{st.session_state.live_label}**")
+                    
+                    if st.session_state.recording:
+                        st.toast("🎥 Recording in progress...")
+                        # In a real app we'd drain the queue periodically to avoid OOM
+                        # For POC we drain when stopping.
+                        while webrtc_ctx.video_processor and not webrtc_ctx.video_processor.frame_queue.empty():
+                            st.session_state.recorded_frames.append(webrtc_ctx.video_processor.frame_queue.get())
+
+                except Exception as e:
+                    st.error(f"❌ Live Stream Error: {e}")
+                    st.info("💡 Try using the **Quick Capture** mode instead for better compatibility.")
+            
+            else:
+                st.subheader("📁 Upload Video for Analysis")
+                st.markdown("""**Instructions:** Drop a clear video clip here to recognize the sign.""")
+                
+                if 'last_results' not in st.session_state:
+                    st.session_state['last_results'] = {}
+
+                uploaded_file = st.file_uploader("Upload Sign Clip", type=["mp4", "avi", "mov"], key="vid_uploader")
+                
+                if uploaded_file:
+                    file_id = f"{uploaded_file.name}_{uploaded_file.size}"
+                    
+                    # Use a specific temp path for persistence during optimization
+                    temp_path = os.path.join(tempfile.gettempdir(), f"upload_{file_id}.mp4")
+                    
+                    with open(temp_path, "wb") as f:
+                        f.write(uploaded_file.getbuffer())
+                    
+                    # CRITICAL FIX: Optimize mobile video for OpenCV compatibility
+                    with st.spinner("🎬 Optimizing Video for Analysis..."):
+                        _optimize_video_for_web(temp_path)
+                    
+                    st.video(temp_path)
+                    
+                    if st.button("🔍 Recognize Sentence", key="btn_recognize"):
+                        with st.spinner("🧠 Analyzing Sign Sequences..."):
+                            labels, confidence = core.predict_sentence(temp_path)
+                            if labels:
+                                sentence = " ".join(labels)
+                                result_text = f"🏆 Sequence: **{sentence}** ({confidence:.1f}%)"
+                                st.session_state['last_results'][file_id] = result_text
+                                
+                                # Add new words to shared sentence if they aren't already there in order
+                                for label in labels:
+                                    if not st.session_state['shared_sentence'] or st.session_state['shared_sentence'][-1] != label:
+                                        st.session_state['shared_sentence'].append(label)
+                            else:
+                                st.error("❌ Recognition failed. Please try a clearer video with distinct pauses between signs.")
+                    
+                    # Persist result display even after button click
+                    if file_id in st.session_state['last_results']:
+                        st.success(st.session_state['last_results'][file_id])
 
     st.markdown("---")
     st.markdown("Designed by **Ahmed Eltaweel** | AI Architect @ Konecta 🚀")
