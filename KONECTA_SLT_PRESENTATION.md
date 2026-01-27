@@ -3,6 +3,8 @@
 ## 🎯 The Vision
 Empowering the Deaf community through a **State-of-the-Art (SOTA) Bidirectional Interface**. Konecta SLT bridges the communication gap by translating real-time sign language into text/speech and vice-versa using stylized **Digital Human Synthesis**.
 
+![Digital Human Avatar Concept](digital_human_concept.png)
+
 ---
 
 ## 🏗️ 1. Technical Framework (The Core)
@@ -33,6 +35,35 @@ graph TD
     K --> L
 ```
 
+### 📖 تعريف كل مرحلة (Stage Definitions)
+
+#### 🔹 Input Layer (طبقة الإدخال)
+| المكون | الوصف |
+|--------|-------|
+| **A - Text/Speech/Video** | نقطة دخول البيانات - يمكن للمستخدم إدخال نص مكتوب، كلام صوتي، أو فيديو لغة إشارة |
+| **B - Process Type** | موزع ذكي يحدد نوع المعالجة المطلوبة (تركيب أو تعرف) |
+
+#### 🔹 Synthesis Engine (محرك التركيب - النص ← الإشارة)
+| المكون | الوصف |
+|--------|-------|
+| **D - NLP Lemmatizer** | معالج لغوي يحول الجمل لأصلها ويحذف الكلمات الزائدة (مثل: "going" → "go") |
+| **E - Skeletal DNA Lookup** | البحث في قاموس الـ DNA العظمي لاسترجاع مصفوفة الحركة لكل كلمة |
+| **F - Motion Interpolation** | تنعيم الانتقال بين الإشارات باستخدام Linear Interpolation لحركة سلسة |
+| **G - 3D VRM Avatar Render** | رسم الأفاتار ثلاثي الأبعاد وتحريكه بناءً على مصفوفات الـ DNA |
+
+#### 🔹 Recognition Engine (محرك التعرف - الإشارة ← النص)
+| المكون | الوصف |
+|--------|-------|
+| **H - MediaPipe Tracking** | تتبع 75+ نقطة عظمية (21 لكل يد + 33 للجسم) باستخدام MediaPipe Holistic |
+| **I - Feature Normalization** | تطبيع الإحداثيات نسبياً (مركزها الأنف) لضمان الدقة بغض النظر عن المسافة |
+| **J - Random Forest ML Model** | نموذج تصنيف يقارن الحركة الحية بقاموس الـ DNA ويحدد الكلمة (دقة تصل 98.83%) |
+| **K - Sentence Construction** | بناء الجملة من الكلمات المُتعرَّف عليها مع مراعاة التسلسل الزمني |
+
+#### 🔹 Output Layer (طبقة الإخراج)
+| المكون | الوصف |
+|--------|-------|
+| **L - User Display** | عرض النتيجة النهائية (فيديو الأفاتار أو النص المُترجَم) |
+
 ---
 
 ## 🧬 2. Performance & Technical Depth
@@ -43,6 +74,7 @@ Behind the interface lies a robust pipeline optimized for web stability and accu
 - **🧩 Skeletal DNA (CLR):** Every sign is stored as a lightweight DNA matrix. No heavy video files needed.
 - **🧠 Accuracy & Scaling:** 50+ synthetic variations generated per landmark. Research shows this approach can improve accuracy by up to **19%**. *(Source: arXiv, IEEE)*
 - **⚡ MediaPipe Performance:** Achieves **15-80ms latency** depending on complexity (Lite/Full/Heavy modes). *(Source: Google Research)*
+
 
 ---
 
