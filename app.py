@@ -224,13 +224,23 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Vocabulary Mapping (Optimized for Internal Library Sync)
+# Vocabulary Mapping (Stable 8 - Confirmed SLT Library Mappings)
 PSL_VOCABULARY = {
-    # Base Tokens (Urdu)
-    "apple": "سیب", "world": "دنيا", "good": "اچھا", "hello": "ہیلو",
-    "salam": "سلام", "water": "پانی", "food": "کھانا", "school": "اسكول",
-    "mother": "ماں", "father": "باپ", "help": "مدد", "thanks": "شکریہ",
-    "home": "گھر", "yes": "ہاں", "no": "نہیں"
+    # These 8 words have verified labels in pk-dictionary-mapping.json
+    "apple": "سیب",      # pk-hfad-1_apple
+    "world": "دنیا",     # pk-hfad-1_world
+    "good": "اچھا",      # pk-hfad-1_good
+    "school": "اسکول",   # pk-hfad-1_school
+    "mother": "ماں",     # pk-hfad-1_mother
+    "father": "باپ",     # pk-hfad-1_papa
+    "help": "مدد",       # pk-hfad-1_help
+    "home": "گھر",       # pk-hfad-1_house
+}
+
+# Pending Vocabulary (Not in pk-dictionary-mapping.json - Awaiting Library Support)
+PSL_PENDING = {
+    "hello": "ہیلو", "salam": "سلام", "water": "پانی", 
+    "food": "کھانا", "thanks": "شکریہ", "yes": "ہاں", "no": "نہیں"
 }
 
 # App Data Paths

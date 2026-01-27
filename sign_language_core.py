@@ -47,12 +47,24 @@ class SignLanguageCore:
         self.classifier = None
         self.label_encoder = None
         
-        # Core Vocabulary (Elite 15)
+        # Core Vocabulary (Stable 8 - Confirmed SLT Library Mappings)
+        # These words have verified labels in pk-dictionary-mapping.json
         self.vocabulary = {
-            "apple": "سیب", "world": "دنيا", "good": "اچھا", "hello": "ہیلو",
-            "salam": "سلام", "water": "پانی", "food": "کھانا", "school": "اسكول",
-            "mother": "ماں", "father": "باپ", "help": "مدد", "thanks": "شکریہ",
-            "home": "گھر", "yes": "ہاں", "no": "نہیں"
+            "apple": "سیب",      # pk-hfad-1_apple
+            "world": "دنیا",     # pk-hfad-1_world  
+            "good": "اچھا",      # pk-hfad-1_good
+            "school": "اسکول",   # pk-hfad-1_school
+            "mother": "ماں",     # pk-hfad-1_mother
+            "father": "باپ",     # pk-hfad-1_papa
+            "help": "مدد",       # pk-hfad-1_help
+            "home": "گھر",       # pk-hfad-1_house
+        }
+        
+        # Pending Vocabulary (Not in pk-dictionary-mapping.json)
+        # These require custom landmark generation or library updates
+        self.pending_vocabulary = {
+            "hello": "ہیلو", "salam": "سلام", "water": "پانی", 
+            "food": "کھانا", "thanks": "شکریہ", "yes": "ہاں", "no": "نہیں"
         }
 
     def extract_landmarks_from_video(self, video_path, max_frames=60, return_sequence=True):

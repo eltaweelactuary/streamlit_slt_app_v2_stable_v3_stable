@@ -19,8 +19,10 @@ Deploy directly to [Streamlit Cloud](https://share.streamlit.io/) using this rep
 ## 🏗️ Architecture: The Unified DNA Core
 The system utilizes a **Unified Landmark Representation (CLR)**. Every sign is stored as a "Skeletal DNA" matrix, allowing for seamless stitching and high-fidelity avatar rendering across different digital character models (Neo, Prime, Elite).
 
-## 📊 Core Vocabulary (Elite 15)
-`apple, world, salam, good, hello, water, food, school, mother, father, help, thanks, home, yes, no`
+## 📊 Core Vocabulary (Stable 8)
+**Active:** `apple, world, good, school, mother, father, help, home`
+
+**Pending (Awaiting SLT Library Support):** `hello, salam, water, food, thanks, yes, no`
 
 ---
 **Designed by:** Ahmed Eltaweel | AI Architect @ Konecta 🚀
