@@ -798,6 +798,20 @@ def main():
             if c2.button("🚀 Push to Avatar", key="btn_push_shared"):
                 st.session_state['text_input_val'] = " ".join(st.session_state['shared_sentence'])
                 st.success("✅ Sequence synced to Tab 1!")
+            if c3.button("🔊 Speak Sentence", key="btn_speak_shared"):
+                sentence = " ".join(st.session_state['shared_sentence'])
+                try:
+                    from gtts import gTTS
+                    import base64
+                    tts = gTTS(text=sentence, lang='en')
+                    audio_file = os.path.join(tempfile.gettempdir(), "tts_output.mp3")
+                    tts.save(audio_file)
+                    with open(audio_file, "rb") as f:
+                        audio_bytes = f.read()
+                    st.audio(audio_bytes, format="audio/mp3")
+                    st.success(f"🔊 Speaking: **{sentence}**")
+                except Exception as e:
+                    st.error(f"❌ TTS Error: {e}")
             st.markdown("---")
 
         # Camera mode selection

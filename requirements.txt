@@ -27,3 +27,7 @@ SpeechRecognition>=3.10.0
 # PyAudio is removed for Streamlit Cloud compatibility
 streamlit-webrtc>=0.47.0
 av>=11.0.0
+
+# Text-to-Speech
+gTTS>=2.3.0
+pyttsx3>=2.90

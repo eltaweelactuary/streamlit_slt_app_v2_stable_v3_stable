@@ -8,8 +8,9 @@ Usage:
 
 Controls:
     SPACE - Start/Stop recording
-    Q - Quit
-    R - Reset sentence
+    S     - Speak the recognized sentence (Text-to-Speech)
+    Q     - Quit
+    R     - Reset sentence
 """
 
 import cv2
@@ -22,6 +23,29 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from sign_language_core import SignLanguageCore
+
+# Text-to-Speech setup
+try:
+    import pyttsx3
+    tts_engine = pyttsx3.init()
+    tts_engine.setProperty('rate', 150)  # Speed of speech
+    TTS_AVAILABLE = True
+    print("🔊 Text-to-Speech: Enabled")
+except ImportError:
+    TTS_AVAILABLE = False
+    print("⚠️ Text-to-Speech: Disabled (install pyttsx3: pip install pyttsx3)")
+
+def speak_text(text):
+    """Convert text to speech."""
+    if TTS_AVAILABLE and text:
+        try:
+            tts_engine.say(text)
+            tts_engine.runAndWait()
+            return True
+        except Exception as e:
+            print(f"❌ TTS Error: {e}")
+            return False
+    return False
 
 def main():
     print("🚀 Konecta SLT Desktop Live Analyzer")
@@ -150,6 +174,15 @@ def main():
             recognized_words = []
             last_prediction = ""
             print("🔄 Sentence reset")
+        
+        elif key == ord('s'):
+            # Speak the recognized sentence
+            if recognized_words:
+                sentence_to_speak = " ".join(recognized_words)
+                print(f"🔊 Speaking: {sentence_to_speak}")
+                speak_text(sentence_to_speak)
+            else:
+                print("⚠️ No words to speak. Record some signs first.")
     
     # Cleanup
     cap.release()
