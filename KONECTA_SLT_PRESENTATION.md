@@ -126,6 +126,40 @@ sequenceDiagram
   - **NVIDIA A100:** Enterprise-grade solution (~$30,000), delivering 142 detections per second with sub-100 ms latency. *(Source: NVIDIA)*
 - **Instant Response:** Enable instantaneous text-to-avatar and sign-to-text feedback loops.
 
+> [!IMPORTANT]
+> ### 🌐 Live Streaming: Technical Challenge Explained
+> 
+> **Why Live Camera is Complex on Web:**
+> 
+> ```mermaid
+> graph LR
+>     A[User Browser] -->|WebRTC| B[STUN Server]
+>     B -->|NAT Traversal| C[TURN Server]
+>     C -->|Relay| D[Streamlit Cloud]
+>     D -->|Process| E[AI Engine]
+> ```
+> 
+> | Component | Purpose | Challenge on Streamlit Cloud |
+> |-----------|---------|------------------------------|
+> | **WebRTC** | Peer-to-peer video protocol | Requires secure HTTPS + permissions |
+> | **STUN Server** | Discovers public IP address | Works with Google's free servers |
+> | **TURN Server** | Relays video when direct connection fails | ❌ **Not available on free tier** |
+> | **NAT Traversal** | Bypasses firewalls/routers | Fails behind corporate firewalls |
+> 
+> **Current Workarounds:**
+> 
+> | Method | Availability | Best For |
+> |--------|--------------|----------|
+> | 📷 **Quick Capture** | ✅ Cloud + Local | Single signs, static gestures |
+> | 📁 **Upload Video** | ✅ Cloud + Local | Full sentences, dynamic signs |
+> | 🖥️ **Desktop App** | ✅ Local Only | Real-time live streaming |
+> 
+> **Production Solution (Phase 2):**
+> Deploy on infrastructure with:
+> - Dedicated TURN server (e.g., Twilio Network Traversal Service ~$0.004/min)
+> - Self-hosted solution (e.g., coturn on VPS ~$10/month)
+> - Enterprise WebRTC providers (e.g., Daily.co, Vonage)
+
 ### Phase 3: Enterprise Vocabulary Expansion
 - **Target:** Expand the dictionary to **1,000+ signs**, covering technical, corporate, and medical terminology.
 - **LLM Integration:** Incorporate a Large Language Model for context-aware translation and syntax correction.
