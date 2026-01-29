@@ -971,7 +971,6 @@ def main():
                             self.frame_count = 0
                             try:
                                 import mediapipe as mp
-                                # Use HANDS only for ultra-fast live feedback (10x faster than Holistic)
                                 self.hands = mp.solutions.hands.Hands(
                                     static_image_mode=False,
                                     max_num_hands=2,
@@ -979,37 +978,48 @@ def main():
                                     min_tracking_confidence=0.5
                                 )
                                 self.mp_drawing = mp.solutions.drawing_utils
-                            except:
+                            except Exception as e:
                                 self.hands = None
+                                print(f"MediaPipe Init Error: {e}")
                             
                             self.last_prediction = ""
                             self.last_confidence = 0.0
 
                         def recv(self, frame):
-                            img = frame.to_ndarray(format="bgr24")
-                            self.frame_count += 1
-                            
-                            # PERFORMANCE OPTIMIZATION: Use High-Speed Hands track for overlay
-                            if self.mode == "🧪 AI Intelligent (Live Processing)" and self.hands and self.frame_count % 2 == 0:
-                                try:
-                                    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                                    results = self.hands.process(img_rgb)
-                                    
-                                    if results.multi_hand_landmarks:
-                                        for hand_landmarks in results.multi_hand_landmarks:
-                                            self.mp_drawing.draw_landmarks(
-                                                img, hand_landmarks, mp.solutions.hands.HAND_CONNECTIONS)
-                                    
-                                    cv2.putText(img, "GCP-ACCELERATED-STREAM", (30, 30), 
-                                               cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                                except: pass
+                            try:
+                                img = frame.to_ndarray(format="bgr24")
+                                self.frame_count += 1
+                                
+                                # PERFORMANCE OPTIMIZATION: Use High-Speed Hands track for overlay
+                                if self.mode == "🧪 AI Intelligent (Live Processing)" and self.hands and self.frame_count % 2 == 0:
+                                    try:
+                                        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                                        results = self.hands.process(img_rgb)
+                                        
+                                        if hasattr(results, 'multi_hand_landmarks') and results.multi_hand_landmarks:
+                                            for hand_landmarks in results.multi_hand_landmarks:
+                                                self.mp_drawing.draw_landmarks(
+                                                    img, hand_landmarks, mp.solutions.hands.HAND_CONNECTIONS)
+                                        
+                                        cv2.putText(img, "STREAMING ACTIVE", (30, 30), 
+                                                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                                    except: pass
 
-                            # Put in queue for recording/transcribing (UNALTERED ORIGINAL FRAMES)
-                            self.frame_queue.put(img)
-                            return av.VideoFrame.from_ndarray(img, format="bgr24")
+                                # Put in queue for recording/transcribing
+                                if not self.frame_queue.full():
+                                    self.frame_queue.put(img)
+                                
+                                return av.VideoFrame.from_ndarray(img, format="bgr24")
+                            except Exception as e:
+                                # SILENT FAIL: Don't show red error on transient frame drops
+                                return frame
 
-                    # Infrastructure Selection: Production (GCP) vs Sandbox
-                    ice_servers = [{"urls": ["stun:stun.l.google.com:19302"]}]
+                    # Infrastructure Selection: Diversified STUN for Corporate Compatibility
+                    ice_servers = [
+                        {"urls": ["stun:stun.l.google.com:19302"]},
+                        {"urls": ["stun:stun1.l.google.com:19302"]},
+                        {"urls": ["stun:stun2.l.google.com:19302"]},
+                    ]
                     
                     # If user provides TURN credentials in secrets, prioritize them
                     if "GCP_TURN_SERVER" in os.environ:
@@ -1018,9 +1028,6 @@ def main():
                             "username": os.environ.get("GCP_TURN_USER", ""),
                             "credential": os.environ.get("GCP_TURN_PASS", "")
                         })
-                    elif GCP_ENABLED:
-                        # Placeholder: Suggesting the use of a TURN server for professional GCP deployments
-                        pass
 
                     webrtc_ctx = webrtc_streamer(
                         key="slt-live-radical",
@@ -1031,8 +1038,11 @@ def main():
                         async_processing=True,
                     )
 
-                    if not GCP_ENABLED:
-                        st.caption("⚠️ **Infrastructure Note:** Running on public STUN. For higher reliability in corporate networks, a TURN server is recommended.")
+                    with st.expander("🛠️ Live Stream Debug Info"):
+                        st.write(f"Connection State: `{webrtc_ctx.state.playing}`")
+                        st.write(f"GCP Mode: `{'Production' if GCP_ENABLED else 'Local'}`")
+                        if not GCP_ENABLED:
+                            st.info("💡 If video stays black, your corporate firewall is likely blocking STUN traffic. Please follow the GCP Infrastructure Setup guide to deploy a TURN server.")
 
                     col1, col2 = st.columns(2)
                     
