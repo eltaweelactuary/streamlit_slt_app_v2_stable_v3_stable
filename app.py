@@ -302,6 +302,16 @@ def load_or_train_core(core, translator):
     return False
 
 def main():
+    # --- GLOBAL SESSION STATE INITIALIZATION ---
+    if "live_performance_mode" not in st.session_state:
+        st.session_state.live_performance_mode = "⚡ High Performance (No Overlay)"
+    if 'shared_sentence' not in st.session_state:
+        st.session_state['shared_sentence'] = []
+    if "recording" not in st.session_state:
+        st.session_state.recording = False
+    if "recorded_frames" not in st.session_state:
+        st.session_state.recorded_frames = []
+    
     # App UI Initialization
     
     st.title("🤟 Sign Language Translator")
@@ -832,8 +842,6 @@ def main():
         st.header("🎥 Video to Sign Language Text")
         
         # --- SHARED SENTENCE BUILDER UI ---
-        if 'shared_sentence' not in st.session_state:
-            st.session_state['shared_sentence'] = []
             
         if st.session_state['shared_sentence']:
             st.info(f"📝 **Sentence Builder:** {' '.join(st.session_state['shared_sentence'])}")
@@ -950,13 +958,6 @@ def main():
                     import av
                     import queue
 
-                    # State for recording
-                    if "recording" not in st.session_state: st.session_state.recording = False
-                    if "recorded_frames" not in st.session_state: st.session_state.recorded_frames = []
-
-                    if "live_performance_mode" not in st.session_state:
-                        st.session_state.live_performance_mode = "⚡ High Performance (No Overlay)"
-
                     st.sidebar.markdown("---")
                     st.session_state.live_performance_mode = st.sidebar.radio(
                         "🎭 Live Analysis Mode",
@@ -1014,11 +1015,12 @@ def main():
                                 # SILENT FAIL: Don't show red error on transient frame drops
                                 return frame
 
-                    # Infrastructure Selection: Diversified STUN for Corporate Compatibility
+                    # Infrastructure Selection: Diversified STUN for Corporate Compatibility (KSA & Global)
                     ice_servers = [
                         {"urls": ["stun:stun.l.google.com:19302"]},
                         {"urls": ["stun:stun1.l.google.com:19302"]},
-                        {"urls": ["stun:stun2.l.google.com:19302"]},
+                        {"urls": ["stun:stun.services.mozilla.com"]},
+                        {"urls": ["stun:stun.l.google.com:19305"]},
                     ]
                     
                     # If user provides TURN credentials in secrets, prioritize them
