@@ -265,6 +265,7 @@ PSL_VOCABULARY = {
     "father": "باپ",     # pk-hfad-1_papa
     "help": "مدد",       # pk-hfad-1_help
     "home": "گھر",       # pk-hfad-1_house
+    "is": "ہے"
 }
 
 # Pending Vocabulary (Not in pk-dictionary-mapping.json - Awaiting Library Support)
@@ -899,35 +900,12 @@ def main():
                         try:
                             # Extract landmarks from single frame using MediaPipe
                             mp_holistic = mp.solutions.holistic
-                            with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5) as holistic:
+                            with mp_holistic.Holistic(min_detection_confidence=0.5, min_tracking_confidence=0.5, refine_face_landmarks=True) as holistic:
                                 img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                                 results = holistic.process(img_rgb)
                                 
-                                # Build landmark vector same as video extraction
-                                landmarks = []
-                                
-                                # Left hand (21 points)
-                                if results.left_hand_landmarks:
-                                    for lm in results.left_hand_landmarks.landmark:
-                                        landmarks.extend([lm.x, lm.y, lm.z])
-                                else:
-                                    landmarks.extend([0.0] * 63)
-                                
-                                # Right hand (21 points)
-                                if results.right_hand_landmarks:
-                                    for lm in results.right_hand_landmarks.landmark:
-                                        landmarks.extend([lm.x, lm.y, lm.z])
-                                else:
-                                    landmarks.extend([0.0] * 63)
-                                
-                                # Pose (33 points - but we use 25 key points)
-                                if results.pose_landmarks:
-                                    key_indices = [0,11,12,13,14,15,16,17,18,19,20,21,22,23,24]
-                                    for idx in key_indices:
-                                        lm = results.pose_landmarks.landmark[idx]
-                                        landmarks.extend([lm.x, lm.y, lm.z])
-                                else:
-                                    landmarks.extend([0.0] * 45)
+                                # Use unified core extraction (ensures 229 features)
+                                landmarks = core.extract_frame_features(results)
                                 
                                 # Now predict using landmarks
                                 if len(landmarks) > 0 and sum(landmarks) != 0:

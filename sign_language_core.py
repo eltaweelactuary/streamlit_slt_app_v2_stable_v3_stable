@@ -60,11 +60,11 @@ class SignLanguageCore:
             "home": "گھر",       # pk-hfad-1_house
         }
         
-        # Pending Vocabulary (Not in pk-dictionary-mapping.json)
-        # These require custom landmark generation or library updates
-        self.pending_vocabulary = {
-            "hello": "ہیلو", "salam": "سلام", "water": "پانی", 
-            "food": "کھانا", "thanks": "شکریہ", "yes": "ہاں", "no": "نہیں"
+        # Core Vocabulary (Stable 8 - Confirmed SLT Library Mappings)
+        self.vocabulary = {
+            "apple": "سیب", "world": "دنیا", "good": "اچھا",
+            "school": "اسکول", "mother": "ماں", "father": "باپ",
+            "help": "مدد", "home": "گھر", "is": "ہے"
         }
 
     def extract_landmarks_from_video(self, video_path, max_frames=60, return_sequence=True):
@@ -123,7 +123,50 @@ class SignLanguageCore:
             except:
                 return [0.0, 0.0, 0.0, 0.0]
 
-        # Use Holistic with refined face landmarks for expressions
+    def extract_frame_features(self, results):
+        """Standardizes feature extraction: Pose(99) + Hands(126) + Face(4) = 229 features"""
+        ref_x, ref_y = 0.5, 0.5
+        if results.pose_landmarks:
+            nose = results.pose_landmarks.landmark[0]
+            ref_x, ref_y = nose.x, nose.y
+        
+        def get_coords(res_attr, num_pts=21):
+            if not res_attr: return [0.0] * (num_pts * 3)
+            pts = res_attr.landmark[:num_pts]
+            return [c for lm in pts for c in [lm.x - ref_x, lm.y - ref_y, lm.z]]
+
+        frame_features = []
+        frame_features.extend(get_coords(results.left_hand_landmarks, 21))  # 63
+        frame_features.extend(get_coords(results.right_hand_landmarks, 21)) # 63
+        frame_features.extend(get_coords(results.pose_landmarks, 33))       # 99
+        
+        # Calculate expressions (4)
+        def _get_metrics(face_landmarks):
+            if not face_landmarks: return [0.0]*4
+            try:
+                def dist(a, b):
+                    p1 = face_landmarks.landmark[a]
+                    p2 = face_landmarks.landmark[b]
+                    return ((p1.x - p2.x)**2 + (p1.y - p2.y)**2)**0.5
+                
+                # Face metrics logic
+                f_w = dist(234, 454)
+                f_h = dist(10, 152)
+                if f_w < 0.01: return [0.0]*4
+                happy = max(0.0, min(1.0, (dist(61, 291)/f_w - 0.42) * 8.0))
+                surp = max(0.0, min(1.0, (dist(13, 14)/f_h - 0.03) * 15.0))
+                angry = max(0.0, min(1.0, (0.24 - dist(55, 285)/f_w) * 20.0))
+                blink = 1.0 if (dist(159, 145)/f_h) < 0.02 else 0.0
+                return [happy, surp, angry, blink]
+            except: return [0.0]*4
+
+        frame_features.extend(_get_metrics(results.face_landmarks))
+        return frame_features
+
+    def extract_landmarks_from_video(self, video_path, return_sequence=False, max_frames=60):
+        cap = cv2.VideoCapture(str(video_path))
+        features_sequence = []
+        
         with self.mp_holistic.Holistic(
             min_detection_confidence=0.5, 
             min_tracking_confidence=0.5,
@@ -133,34 +176,15 @@ class SignLanguageCore:
             while cap.isOpened() and count < max_frames:
                 ret, frame = cap.read()
                 if not ret: break
-                
                 rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 results = holistic.process(rgb)
-                
-                ref_x, ref_y = 0.5, 0.5
-                if results.pose_landmarks:
-                    nose = results.pose_landmarks.landmark[0]
-                    ref_x, ref_y = nose.x, nose.y
-                
-                def get_coords(res_attr, num_pts=21):
-                    if not res_attr: return [0.0] * (num_pts * 3)
-                    pts = res_attr.landmark[:num_pts]
-                    return [c for lm in pts for c in [lm.x - ref_x, lm.y - ref_y, lm.z]]
-
-                frame_features = []
-                frame_features.extend(get_coords(results.left_hand_landmarks, 21))  # 63
-                frame_features.extend(get_coords(results.right_hand_landmarks, 21)) # 63
-                frame_features.extend(get_coords(results.pose_landmarks, 33))       # 99
-                
-                # NEW: Extract Expressions (4 floats)
-                expressions = _calculate_face_metrics(results.face_landmarks)
-                frame_features.extend(expressions)
-                
-                features_sequence.append(frame_features)
+                features = self.extract_frame_features(results)
+                features_sequence.append(features)
                 count += 1
         
         cap.release()
-        return np.array(features_sequence) if features_sequence else None
+        if not features_sequence: return None
+        return np.array(features_sequence) if return_sequence else np.mean(features_sequence, axis=0)
 
     def build_landmark_dictionary(self, translator):
         """
