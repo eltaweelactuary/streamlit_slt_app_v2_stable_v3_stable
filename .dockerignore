@@ -1,0 +1,16 @@
+.git
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+.ipynb_checkpoints
+data/
+slt_core_assets/landmarks/
+slt_core_assets/videos/
+Dockerfile
+.dockerignore
+walkthrough.md
+GCP_INFRASTRUCTURE_SETUP.md
+implementation_plan.md
+task.md

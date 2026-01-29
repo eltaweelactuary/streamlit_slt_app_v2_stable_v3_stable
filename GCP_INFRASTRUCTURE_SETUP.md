@@ -1,60 +1,46 @@
-# 🌐 GCP Infrastructure Setup Guide: Enterprise Live Streaming
+# ☁️ Google Cloud Run: Deployment Guide v3.0
 
-To leverage the full power of **Google Cloud** and fix the "lag/freezing" issues in corporate networks (Konecta), you must deploy a dedicated **TURN Server**. 
+The application is now fully upgraded to a **FastAPI + Docker** architecture, optimized for high-performance deployment on Google Cloud.
 
-Your `service-account-key.json` is the key to automating this deployment.
+## ✅ Readiness Audit
+- [x] **Dockerfile:** Standardized for FastAPI (No Streamlit overhead).
+- [x] **.dockerignore:** Implemented to exclude local assets and sensitive files.
+- [x] **main.py:** Configured to listen on dynamic `$PORT` for Cloud Run compliance.
+- [x] **Frontend:** Client-side MediaPipe processing to reduce server load.
 
-## 🚀 1. Deploying the TURN Server (GCP Compute Engine)
+---
 
-A TURN server acts as a relay for video data, bypassing firewalls that block standard WebRTC.
+## 🚀 Deployment Steps (4 Commands)
 
-### Step-by-Step Commands:
+Follow these steps in your terminal (ensure you have [Google Cloud SDK](https://cloud.google.com/sdk/docs/install) installed):
 
-1. **Enable Compute Engine API:**
-   ```bash
-   gcloud services enable compute.googleapis.com
-   ```
-
-2. **Create a specialized VM instance (e2-micro is enough):**
-   ```bash
-   gcloud compute instances create turn-server-konecta \
-       --zone=us-central1-a \
-       --machine-type=e2-micro \
-       --tags=turn-server \
-       --metadata=startup-script="#! /bin/bash
-   apt-get update
-   apt-get install -y coturn
-   echo 'TURNSERVER_ENABLED=1' > /etc/default/coturn
-   cat <<EOF > /etc/turnserver.conf
-   listening-port=3478
-   fingerprint
-   lt-cred-mech
-   user=konecta_user:k0necta_p@ss
-   realm=konecta.ai
-   EOF
-   systemctl restart coturn"
-   ```
-
-3. **Open Firewall Ports:**
-   ```bash
-   gcloud compute firewall-rules create allow-turn \
-       --allow=udp:3478,tcp:3478 \
-       --target-tags=turn-server
-   ```
-
-## 🧠 2. Linking to the App
-
-Once deployed, get the External IP of your instance:
-```bash
-gcloud compute instances list
+### Step 1: Initialize Local Variables
+Set your project ID for easy copying:
+```powershell
+$PROJECT_ID = "YOUR_GCP_PROJECT_ID"
 ```
 
-Add these to your Streamlit Secrets or Environment Variables:
-- `GCP_TURN_SERVER`: `turn:<YOUR_GCP_IP>:3478`
-- `GCP_TURN_USER`: `konecta_user`
-- `GCP_TURN_PASS`: `k0necta_p@ss`
+### Step 2: Authenticate with Google Cloud
+```powershell
+gcloud auth login
+gcloud config set project $PROJECT_ID
+```
 
-## 💎 Why this uses "Google Power"?
-- **Google Global Network:** Video data travels through Google's premium fiber-optic network instead of the public internet.
-- **Dedicated Resources:** The processing is backed by GCP's high-uptime infrastructure, ensuring the stream never "hangs" due to network relay issues.
-- **Security:** Authenticated via the Service Account you provided.
+### Step 3: Build & Upload Image (Google Artifact Registry)
+This command packages the app and uploads it to Google's secured registry:
+```powershell
+gcloud builds submit --tag gcr.io/$PROJECT_ID/konecta-slt-v3
+```
+
+### Step 4: Deploy to Cloud Run
+This command starts the service and makes it public:
+```powershell
+gcloud run deploy konecta-slt --image gcr.io/$PROJECT_ID/konecta-slt-v3 --platform managed --region us-central1 --allow-unauthenticated
+```
+
+---
+
+## 🛠️ Performance Optimization for GCP
+The app uses **`/tmp/slt_persistent_storage`** for on-the-fly assets, which is compatible with Cloud Run's ephemeral filesystem. For production use with multiple instances, we recommend mounting a **Google Cloud Storage (GCS) bucket**.
+
+Designed by **Antigravity AI** for **Ahmed Eltaweel | Konecta 🚀**

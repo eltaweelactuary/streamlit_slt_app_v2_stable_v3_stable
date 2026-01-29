@@ -17,13 +17,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application
 COPY . .
 
-# Expose Streamlit port
+# Expose FastAPI port
 EXPOSE 8080
 
 # Environment variables for Cloud Run
 ENV PORT=8080
-ENV STREAMLIT_SERVER_PORT=8080
-ENV STREAMLIT_SERVER_ADDRESS=0.0.0.0
+ENV PYTHONUNBUFFERED=1
 
 # Run the application
 CMD ["python", "main.py"]
