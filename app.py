@@ -225,7 +225,7 @@ st.set_page_config(
 # ==============================================================================
 # --- MANDATORY SESSION STATE BENCHMARK (CRITICAL FOR THREAD STABILITY) ---
 # ==============================================================================
-# 1. Component Keys
+# 1. Component Keys (Dictionary Access Preferred for Thread Safety)
 for key, val in {
     "live_performance_mode": "⚡ High Performance (No Overlay)",
     "shared_sentence": [],
@@ -1029,6 +1029,7 @@ def main():
                                 return frame
 
                     # Infrastructure Selection: Diversified STUN for Corporate Compatibility (KSA & Global)
+                    # ADDING PUBLIC TURN FALLBACK (OPEN RELAY) FOR FIREWALL BYPASS
                     ice_servers = [
                         {"urls": ["stun:stun.l.google.com:19302"]},
                         {"urls": ["stun:stun1.l.google.com:19302"]},
@@ -1036,8 +1037,18 @@ def main():
                         {"urls": ["stun:stun3.l.google.com:19302"]},
                         {"urls": ["stun:stun4.l.google.com:19302"]},
                         {"urls": ["stun:stun.services.mozilla.com"]},
-                        {"urls": ["stun:stun.l.google.com:19305"]},
                         {"urls": ["stun:global.stun.twilio.com:3478"]},
+                        # PUBLIC TURN FALLBACK (Over TCP Port 80 - Bypasses firewalls)
+                        {
+                            "urls": ["turn:openrelay.metered.ca:80"],
+                            "username": "openrelay",
+                            "credential": "openrelay"
+                        },
+                        {
+                            "urls": ["turn:openrelay.metered.ca:443"],
+                            "username": "openrelay",
+                            "credential": "openrelay"
+                        }
                     ]
                     
                     # If user provides TURN credentials in secrets, prioritize them
@@ -1052,7 +1063,7 @@ def main():
                     current_perf_mode = st.session_state.get('live_performance_mode', "⚡ High Performance (No Overlay)")
                     
                     webrtc_ctx = webrtc_streamer(
-                        key="slt-live-radical-v2",
+                        key="slt-live-ultra-final",
                         mode=WebRtcMode.SENDRECV,
                         rtc_configuration=RTCConfiguration({"iceServers": ice_servers}),
                         video_processor_factory=lambda: SignProcessor(current_perf_mode),
@@ -1069,21 +1080,21 @@ def main():
                     col1, col2 = st.columns(2)
                     
                     if webrtc_ctx.video_processor:
-                        if not st.session_state.recording:
+                        if not st.session_state['recording']:
                             if col1.button("🔴 Start Recording", use_container_width=True):
-                                st.session_state.recording = True
-                                st.session_state.recorded_frames = []
+                                st.session_state['recording'] = True
+                                st.session_state['recorded_frames'] = []
                                 st.rerun()
                         else:
                             if col1.button("⏹️ Stop & Transcribe", use_container_width=True):
-                                st.session_state.recording = False
+                                st.session_state['recording'] = False
                                 # Drain queue into session state with progress
                                 with st.status("📥 Fetching frames...", expanded=False) as status:
                                     while not webrtc_ctx.video_processor.frame_queue.empty():
-                                        st.session_state.recorded_frames.append(webrtc_ctx.video_processor.frame_queue.get())
-                                    status.update(label=f"✅ {len(st.session_state.recorded_frames)} frames captured", state="complete")
+                                        st.session_state['recorded_frames'].append(webrtc_ctx.video_processor.frame_queue.get())
+                                    status.update(label=f"✅ {len(st.session_state['recorded_frames'])} frames captured", state="complete")
                                 
-                                if len(st.session_state.recorded_frames) > 10:
+                                if len(st.session_state['recorded_frames']) > 10:
                                     with st.spinner("🧠 Analyzing Sign Sequence (This may take a moment)..."):
                                         # Save to temp file - BYPASS THE PATCHED WRITER to skip slow ffmpeg
                                         temp_vid = os.path.join(tempfile.gettempdir(), f"live_rec_{int(time.time())}.mp4")
