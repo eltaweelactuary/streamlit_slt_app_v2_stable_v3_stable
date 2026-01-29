@@ -119,12 +119,9 @@ sequenceDiagram
 
 ## 🚀 5. Roadmap: From PoC to Production
 
-### Phase 2: High-Performance Live Analysis
-- **Live Streaming Core:** Transition from the current "Record & Transcribe" workflow to active **Real-Time Live Stream Translation**.
-- **Infrastructure Requirements:** Migration to GPU-accelerated servers:
-  - **NVIDIA T4:** Cost-effective solution (~$2,500), suitable for PoC environments, achieving ~1 ms latency for lightweight inference.
-  - **NVIDIA A100:** Enterprise-grade solution (~$30,000), delivering 142 detections per second with sub-100 ms latency. *(Source: NVIDIA)*
 - **Instant Response:** Enable instantaneous text-to-avatar and sign-to-text feedback loops.
+- **Neural Rendering (Phase 2 Goal):** Transition from 3D avatars (Three.js) to **Hyper-realistic Human Synthesis** using GAN-based Video Re-rendering. 
+  - *Proof of Concept:* Professional studio lighting and scanning synthesis overlays already implemented.
 
 > [!IMPORTANT]
 > ### 🌐 Live Streaming: Technical Challenge Explained
@@ -148,17 +145,17 @@ sequenceDiagram
 > 
 > **Current Workarounds:**
 > 
-> | Method | Availability | Best For |
-> |--------|--------------|----------|
-> | 📷 **Quick Capture** | ✅ Cloud + Local | Single signs, static gestures |
-> | 📁 **Upload Video** | ✅ Cloud + Local | Full sentences, dynamic signs |
-> | 🖥️ **Desktop App** | ✅ Local Only | Real-time live streaming |
+> | Method | Availability | Best For | Status |
+> |--------|--------------|----------|--------|
+> | 📷 **Quick Capture** | ✅ Cloud + Local | Single signs, static gestures | **Active** |
+> | 📁 **Upload Video** | ✅ Cloud + Local | Full sentences, dynamic signs | **Active** |
+> | 🖥️ **Desktop App** | ✅ Local Only | Real-time live streaming | **Active** |
 > 
 > **Production Solution (Phase 2):**
 > Deploy on infrastructure with:
-> - Dedicated TURN server (e.g., Twilio Network Traversal Service ~$0.004/min)
-> - Self-hosted solution (e.g., coturn on VPS ~$10/month)
-> - Enterprise WebRTC providers (e.g., Daily.co, Vonage)
+> - **GCP Service Account Integration:** (✅ Implemented) Ready for Vertex AI and Compute Engine.
+> - **Dedicated TURN server:** (Roadmap) To bypass corporate firewalls.
+> - **Enterprise WebRTC providers:** (Roadmap) e.g., Daily.co, Vonage.
 
 ### Phase 3: Enterprise Vocabulary Expansion
 - **Target:** Expand the dictionary to **1,000+ signs**, covering technical, corporate, and medical terminology.

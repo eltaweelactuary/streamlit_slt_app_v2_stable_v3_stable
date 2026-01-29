@@ -1,20 +1,30 @@
-# 🤟 Next-Gen Sign Language Platform (2025 SOTA)
+# 🤟 Next-Gen Sign Language Platform (v2.0 SOTA)
 
-A state-of-the-art, bidirectional sign language translation and production platform featuring **Digital Human Avatar Synthesis**.
+A state-of-the-art, bidirectional sign language translation and production platform featuring **Digital Human Avatar Synthesis** and **GCP Infrastructure**.
 
 ## 🌟 Key Features
 
 | Feature | Technology | Description |
 |-----------|-------------|-------------|
 | **Digital Human Avatar** | 3D VRM Rigging | Transforms benchmark videos into stylized, noise-free sign language avatars. |
-| **Facial Intelligence** | Non-Manual Signals | Captures and renders lip & eye movements for 40% better communication. |
-| **Concatenative Engine** | Seamless Stitching | Creates smooth, sequential sentence performances from a skeletal DNA core. |
-| **Omni-channel Input** | Speech/Text/Video | Seamlessly translate voice commands or text into sign language performances. |
+| **Neural Synthesis** | Three.js Studio | Simulates high-fidelity production rendering with cinematic lighting and skeletal DNA mapping. |
+| **Dual-Mode Camera** | WebRTC & QuickCapture | Flexible live recognition for both cloud (st.camera_input) and local environments. |
+| **High-Perf Desktop** | OpenCV Standalone | `standalone_live.py`: Zero-latency desktop app for real-time production workflows. |
+| **Omni-channel** | gTTS & Pyttsx3 | Bidirectional: Text ↔ Sign ↔ Speech. Includes a "Speak" button for synthesized voice. |
+| **GCP Ready** | Service Account | Integrated Google Cloud SDK logic for enterprise TURN servers and Vertex AI scaling. |
 
-## 🚀 Quick Start (Cloud Deployment)
-Deploy directly to [Streamlit Cloud](https://share.streamlit.io/) using this repository.
-- **Entry Point:** `app.py`
-- **Environment:** Optimized via `packages.txt` and `requirements.txt`.
+## 🚀 Quick Start
+
+### 🌐 Cloud (Streamlit)
+1. Fork this repo.
+2. Connect to [Streamlit Cloud](https://share.streamlit.io/).
+3. Set `app.py` as the main entry point.
+
+### 🖥️ Desktop (Real-time Mvp)
+For the best performance (30+ FPS), run the standalone desktop version:
+```bash
+python standalone_live.py
+```
 
 ## 🏗️ Architecture: The Unified DNA Core
 The system utilizes a **Unified Landmark Representation (CLR)**. Every sign is stored as a "Skeletal DNA" matrix, allowing for seamless stitching and high-fidelity avatar rendering across different digital character models (Neo, Prime, Elite).
@@ -22,8 +32,6 @@ The system utilizes a **Unified Landmark Representation (CLR)**. Every sign is s
 ## 📊 Core Vocabulary (Stable 8)
 **Active:** `apple, world, good, school, mother, father, help, home`
 
-**Pending (Awaiting SLT Library Support):** `hello, salam, water, food, thanks, yes, no`
-
 ---
-**Designed by:** Ahmed Eltaweel | AI Architect @ Konecta 🚀
-**Powered by:** MediaPipe Holistic, SLT Concatenative Engine, and Three.js VRM Client.
+**Designed by:** Ahmed Eltaweel | AI Solutions Architect @ Konecta 🚀
+**Infrastructure:** GCP Service Account Integrated (Production Ready)
