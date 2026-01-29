@@ -157,9 +157,11 @@ sequenceDiagram
 > - **Dedicated TURN server:** (Roadmap) To bypass corporate firewalls.
 > - **Enterprise WebRTC providers:** (Roadmap) e.g., Daily.co, Vonage.
 
-### Phase 3: Enterprise Vocabulary Expansion
-- **Target:** Expand the dictionary to **1,000+ signs**, covering technical, corporate, and medical terminology.
-- **LLM Integration:** Incorporate a Large Language Model for context-aware translation and syntax correction.
+### Phase 3: Enterprise & National Expansion (Saudi Vision)
+- **Saudi Open Data Integration:** Ingest official Saudi Sign Language (SSL) datasets from the **Saudi Open Data Portal** into **GCP BigQuery**.
+- **Vertex AI Custom Training:** Use Google's **Vertex AI** to train a Large Sign Model (LSM) specifically on Saudi dialects and regional signs.
+- **Auto-Expansion:** Implement a "Signature Discovery" loop where the system automatically proposes new skeletal DNA for unmapped Saudi signs using **Google Cloud Video Intelligence**.
+- **Contextual Translation:** Use **PaLM 2 / Gemini Pro** (Vertex AI) to ensure translations follow the linguistic syntax of Arabic-Saudi Sign Language.
 
 ---
 

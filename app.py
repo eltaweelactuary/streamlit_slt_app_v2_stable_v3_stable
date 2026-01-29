@@ -23,10 +23,17 @@ WRITABLE_BASE = os.path.join(tempfile.gettempdir(), "slt_persistent_storage")
 APP_ROOT = os.path.abspath(os.getcwd()).replace("\\", "/")
 
 # 2. Google Cloud Platform (GCP) Credentials
-GCP_KEY_PATH = os.path.join(os.path.dirname(__file__), "service-account-key.json")
+# Use a more robust absolute path detection
+GCP_KEY_FILENAME = "service-account-key.json"
+GCP_KEY_PATH = os.path.abspath(os.path.join(os.getcwd(), GCP_KEY_FILENAME)).replace("\\", "/")
 GCP_ENABLED = False
+
 if os.path.exists(GCP_KEY_PATH):
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCP_KEY_PATH
+    GCP_ENABLED = True
+elif os.path.exists(os.path.join(tempfile.gettempdir(), GCP_KEY_FILENAME)):
+    # Check in redirected storage too
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.path.join(tempfile.gettempdir(), GCP_KEY_FILENAME)
     GCP_ENABLED = True
 
 # Recovery: Capture absolute original functions once and preserve them in sys
@@ -602,8 +609,8 @@ def main():
                         <div class="production-tag">NEURAL SYNTHESIS ACTIVE</div>
                         <canvas id="canvas"></canvas>
                         <div class="hud">
-                            <div class="hud-item"><div class="hud-label">Engine</div><div class="hud-value">GCP-Neural-v2</div></div>
-                            <div class="hud-item"><div class="hud-label">Status</div><div class="hud-value" id="status">Synthesizing...</div></div>
+                            <div class="hud-item"><div class="hud-label">Engine</div><div class="hud-value">Google-MediaPipe-MP</div></div>
+                            <div class="hud-item"><div class="hud-label">Status</div><div class="hud-value" id="status">Syncing DNA...</div></div>
                             <div class="hud-item"><div class="hud-label">Frame</div><div class="hud-value" id="frame">0/VAR_DNA_LEN</div></div>
                             <div class="hud-item"><div class="hud-label">Words</div><div class="hud-value">VAR_WORDS</div></div>
                         </div>
@@ -628,28 +635,29 @@ def main():
                         const scene = new THREE.Scene();
                         scene.background = new THREE.Color(0x0a0a12); 
                         const camera = new THREE.PerspectiveCamera(35, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
-                        camera.position.set(0, 1.2, 2.5); 
-                        camera.lookAt(0, 1.2, 0);
+                        camera.position.set(0, 1.3, 2.2); // Closer, more intimate "Portrait" view
+                        camera.lookAt(0, 1.3, 0);
+
                         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
                         renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-                        renderer.setPixelRatio(window.devicePixelRatio);
+                        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
                         renderer.outputColorSpace = THREE.SRGBColorSpace; 
-                        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-                        renderer.toneMappingExposure = 1.2;
+                        renderer.toneMapping = THREE.LinearToneMapping;
+                        renderer.toneMappingExposure = 1.0;
                         
-                        // PROFESSIONAL 3-POINT LIGHTING + RIM LIGHT
-                        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
+                        // --- CINEMATIC DIGITAL HUMAN LIGHTING ---
+                        const hemiLight = new THREE.HemisphereLight(0xabcfff, 0x111111, 0.4); // Cool skylight
                         scene.add(hemiLight);
 
-                        const mainLight = new THREE.DirectionalLight(0xffffff, 1.5); // Key
-                        mainLight.position.set(5, 5, 5);
+                        const mainLight = new THREE.DirectionalLight(0xffffff, 2.0); // Key Light (Warm)
+                        mainLight.position.set(2, 4, 3);
                         scene.add(mainLight);
 
-                        const fillLight = new THREE.PointLight(0x0f9d58, 0.8, 10); // Brand Fill
-                        fillLight.position.set(-5, 2, 2);
+                        const fillLight = new THREE.PointLight(0x0f9d58, 1.2, 5); // Brand Fill (Green tint)
+                        fillLight.position.set(-2, 1, 1);
                         scene.add(fillLight);
 
-                        const rimLight = new THREE.SpotLight(0xffffff, 2); // Rim for Neural Look
+                        const rimLight = new THREE.SpotLight(0xffffff, 4); // Rim Light (Defining the silhouette)
                         rimLight.position.set(0, 5, -5);
                         scene.add(rimLight);
 
@@ -667,8 +675,20 @@ def main():
                                 vrm.scene.traverse(obj => {
                                     if (obj.isMesh) {
                                         obj.material.colorSpace = THREE.SRGBColorSpace;
-                                        // Studio grade brightness for all avatars
-                                        if (obj.material.emissive) obj.material.emissiveIntensity = 0.2;
+                                        // PBR UPGRADE: Convert basic materials to Digital Human Physical standards
+                                        const oldMat = obj.material;
+                                        obj.material = new THREE.MeshPhysicalMaterial({
+                                            map: oldMat.map,
+                                            color: oldMat.color,
+                                            skinning: true,
+                                            roughness: 0.4,
+                                            metalness: 0.1,
+                                            clearcoat: 0.2, // Skin moisture/sheen
+                                            clearcoatRoughness: 0.3,
+                                            reflectivity: 0.5,
+                                            sheen: 0.1, // Sub-surface scattering simulation
+                                            sheenColor: new THREE.Color(0xffaaaa) 
+                                        });
                                     }
                                 });
                                 // Manual Flip Control
@@ -686,6 +706,9 @@ def main():
                         }
 
                         const clock = new THREE.Clock();
+                        // MOVEMENT STABILIZER (Google-MediaPipe Powered)
+                        // Higher value = more responsive, lower = more smooth
+                        const stabilizer = 0.25; 
                         
                         function solveBoneRotation(node, p_start, p_end, baseDir) {
                             if (!node || !p_start || !p_end) return;
@@ -695,8 +718,7 @@ def main():
                                 -(p_end[2] - p_start[2])
                             ).normalize();
                             const q = new THREE.Quaternion().setFromUnitVectors(baseDir, vTarget);
-                            // STABILITY STRENGTH: Reduced slerp (0.05) for maximum limb stabilization
-                            node.quaternion.slerp(q, 0.05); 
+                            node.quaternion.slerp(q, stabilizer); 
                         }
                         
                         function solveHandOrientation(node, p_wrist, p_index, p_middle, p_pinky, side) {
@@ -717,19 +739,18 @@ def main():
                                matrix.makeBasis(vForwardR, vNormal, vSide);
                            }
                            const qFinal = new THREE.Quaternion().setFromRotationMatrix(matrix);
-                           // ELITE STANDARD: Ultra-smooth 0.05 slerp for professional movement
-                           node.quaternion.slerp(qFinal, 0.05); 
+                           node.quaternion.slerp(qFinal, stabilizer); 
                         }
                         
                         function resetArmToRest(arm, forearm, side) {
                             if (!arm || !forearm) return;
                             const qArmDown = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0, side === 'left' ? 1.5 : -1.5)); 
-                            const speed = (side === 'left') ? 0.2 : 0.1;
+                            const speed = 0.1;
                             arm.quaternion.slerp(qArmDown, speed);
                             forearm.quaternion.slerp(new THREE.Quaternion(), speed); 
                         }
 
-                        const fps = 30;
+                        const fps = 24; // Precision handling @ 24fps
                         const timePerFrame = 1.0 / fps;
                         let timeAccumulator = 0.0;
 
@@ -950,9 +971,21 @@ def main():
                     if "recording" not in st.session_state: st.session_state.recording = False
                     if "recorded_frames" not in st.session_state: st.session_state.recorded_frames = []
 
+                    if "live_performance_mode" not in st.session_state:
+                        st.session_state.live_performance_mode = "⚡ High Performance (No Overlay)"
+
+                    st.sidebar.markdown("---")
+                    st.session_state.live_performance_mode = st.sidebar.radio(
+                        "🎭 Live Analysis Mode",
+                        ["🧪 AI Intelligent (Live Processing)", "⚡ High Performance (No Overlay)"],
+                        help="Intelligent mode runs landmark extraction in real-time but may lag on slow CPUs."
+                    )
+                    
                     class SignProcessor:
-                        def __init__(self):
+                        def __init__(self, mode):
                             self.frame_queue = queue.Queue()
+                            self.mode = mode
+                            self.frame_count = 0
                             # AI Core shared with main app
                             try:
                                 import mediapipe as mp
@@ -969,9 +1002,10 @@ def main():
 
                         def recv(self, frame):
                             img = frame.to_ndarray(format="bgr24")
+                            self.frame_count += 1
                             
-                            # Real-time Processing Layer (Production Grade)
-                            if self.holistic:
+                            # PERFORMANCE OPTIMIZATION: Only process every 3rd frame for live feedback
+                            if self.mode == "🧪 AI Intelligent (Live Processing)" and self.holistic and self.frame_count % 3 == 0:
                                 try:
                                     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                                     results = self.holistic.process(img_rgb)
@@ -982,14 +1016,12 @@ def main():
                                     if results.right_hand_landmarks:
                                         self.mp_drawing.draw_landmarks(img, results.right_hand_landmarks, mp.solutions.holistic.HAND_CONNECTIONS)
                                     
-                                    # Optional: Frame-by-frame text overlay
-                                    # This shows the "Live Intelligence" at work
                                     if self.last_prediction:
                                         cv2.putText(img, f"LIVE: {self.last_prediction}", (30, 50), 
                                                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                                 except: pass
 
-                            # Put in queue for recording/transcribing
+                            # Put in queue for recording/transcribing (UNALTERED ORIGINAL FRAMES)
                             self.frame_queue.put(img)
                             return av.VideoFrame.from_ndarray(img, format="bgr24")
 
@@ -1011,10 +1043,13 @@ def main():
                         key="slt-live-radical",
                         mode=WebRtcMode.SENDRECV,
                         rtc_configuration=RTCConfiguration({"iceServers": ice_servers}),
-                        video_processor_factory=SignProcessor,
+                        video_processor_factory=lambda: SignProcessor(st.session_state.live_performance_mode),
                         media_stream_constraints={"video": True, "audio": False},
                         async_processing=True,
                     )
+
+                    if not GCP_ENABLED:
+                        st.caption("⚠️ **Infrastructure Note:** Running on public STUN. For higher reliability in corporate networks, a TURN server is recommended.")
 
                     col1, col2 = st.columns(2)
                     
