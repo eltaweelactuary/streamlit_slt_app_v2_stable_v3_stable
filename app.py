@@ -968,7 +968,9 @@ def main():
                     st.sidebar.markdown("---")
                     # Use index to sync radio with state value safely
                     options = ["🧪 AI Intelligent (Live Processing)", "⚡ High Performance (No Overlay)"]
-                    current_idx = options.index(st.session_state.get('live_performance_mode', options[1]))
+                    # SAFE ACCESS: Always use dict-style to avoid AttributeError
+                    current_perf_mode_val = st.session_state.get('live_performance_mode', options[1])
+                    current_idx = options.index(current_perf_mode_val)
                     
                     st.sidebar.radio(
                         "🎭 Live Analysis Mode",
