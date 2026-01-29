@@ -10,10 +10,16 @@ import tempfile
 import streamlit as st
 import shutil
 import cv2
+import numpy as np
 import sys
 import threading
 import io
 import json
+import queue
+import mediapipe as mp
+import av
+from sign_language_core import SignLanguageCore
+from avatar_renderer import DigitalHumanRenderer
 
 # ==============================================================================
 # --- SYSTEM & INFRASTRUCTURE INITIALIZATION ---
@@ -209,11 +215,6 @@ try:
 except:
     pass
 # ==============================================================================
-
-import numpy as np
-import pickle
-from pathlib import Path
-from sign_language_core import SignLanguageCore, DigitalHumanRenderer
 
 # Page Config
 st.set_page_config(
@@ -979,7 +980,6 @@ def main():
                             self.mode = mode
                             self.frame_count = 0
                             try:
-                                import mediapipe as mp
                                 # Use HANDS only for ultra-fast live feedback (10x faster than Holistic)
                                 self.hands = mp.solutions.hands.Hands(
                                     static_image_mode=False,
@@ -1107,8 +1107,14 @@ def main():
                                         out.release()
                                         
                                         # Predict using the temporal engine
-                                        labels, conf = core.predict_sentence(temp_vid)
-                                        if labels:
+                                        raw_labels, conf = core.predict_sentence(temp_vid)
+                                        if raw_labels:
+                                            # DEDUPLICATION: Remove consecutive duplicates (e.g., world world -> world)
+                                            labels = []
+                                            for l in raw_labels:
+                                                if not labels or labels[-1] != l:
+                                                    labels.append(l)
+                                            
                                             st.session_state['live_label'] = " ".join(labels)
                                             # Add to shared sentence
                                             for lbl in labels:
@@ -1162,8 +1168,14 @@ def main():
                     
                     if col_btn1.button("🔍 Recognize Text", key="btn_recognize"):
                         with st.spinner("🧠 Analyzing Sign Sequences..."):
-                            labels, confidence = core.predict_sentence(temp_path)
-                            if labels:
+                            raw_labels, confidence = core.predict_sentence(temp_path)
+                            if raw_labels:
+                                # Deduplicate
+                                labels = []
+                                for l in raw_labels:
+                                    if not labels or labels[-1] != l:
+                                        labels.append(l)
+                                
                                 sentence = " ".join(labels)
                                 result_text = f"🏆 Sequence: **{sentence}** ({confidence:.1f}%)"
                                 st.session_state['last_results'][file_id] = result_text
@@ -1178,8 +1190,14 @@ def main():
                     # NEW: One-click Video → Speech conversion
                     if col_btn2.button("🔊 Recognize & Speak", key="btn_recognize_speak"):
                         with st.spinner("🧠 Analyzing Sign Language Video..."):
-                            labels, confidence = core.predict_sentence(temp_path)
-                            if labels:
+                            raw_labels, confidence = core.predict_sentence(temp_path)
+                            if raw_labels:
+                                # Deduplicate
+                                labels = []
+                                for l in raw_labels:
+                                    if not labels or labels[-1] != l:
+                                        labels.append(l)
+                                
                                 sentence = " ".join(labels)
                                 result_text = f"🏆 Sequence: **{sentence}** ({confidence:.1f}%)"
                                 st.session_state['last_results'][file_id] = result_text
