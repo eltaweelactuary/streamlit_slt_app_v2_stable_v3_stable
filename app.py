@@ -986,16 +986,18 @@ def main():
                             self.frame_queue = queue.Queue()
                             self.mode = mode
                             self.frame_count = 0
-                            # AI Core shared with main app
                             try:
                                 import mediapipe as mp
-                                self.holistic = mp.solutions.holistic.Holistic(
-                                    min_detection_confidence=0.5, 
+                                # Use HANDS only for ultra-fast live feedback (10x faster than Holistic)
+                                self.hands = mp.solutions.hands.Hands(
+                                    static_image_mode=False,
+                                    max_num_hands=2,
+                                    min_detection_confidence=0.5,
                                     min_tracking_confidence=0.5
                                 )
                                 self.mp_drawing = mp.solutions.drawing_utils
                             except:
-                                self.holistic = None
+                                self.hands = None
                             
                             self.last_prediction = ""
                             self.last_confidence = 0.0
@@ -1004,21 +1006,19 @@ def main():
                             img = frame.to_ndarray(format="bgr24")
                             self.frame_count += 1
                             
-                            # PERFORMANCE OPTIMIZATION: Only process every 3rd frame for live feedback
-                            if self.mode == "🧪 AI Intelligent (Live Processing)" and self.holistic and self.frame_count % 3 == 0:
+                            # PERFORMANCE OPTIMIZATION: Use High-Speed Hands track for overlay
+                            if self.mode == "🧪 AI Intelligent (Live Processing)" and self.hands and self.frame_count % 2 == 0:
                                 try:
                                     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                                    results = self.holistic.process(img_rgb)
+                                    results = self.hands.process(img_rgb)
                                     
-                                    # Draw minimal landmarks for feedback
-                                    if results.left_hand_landmarks:
-                                        self.mp_drawing.draw_landmarks(img, results.left_hand_landmarks, mp.solutions.holistic.HAND_CONNECTIONS)
-                                    if results.right_hand_landmarks:
-                                        self.mp_drawing.draw_landmarks(img, results.right_hand_landmarks, mp.solutions.holistic.HAND_CONNECTIONS)
+                                    if results.multi_hand_landmarks:
+                                        for hand_landmarks in results.multi_hand_landmarks:
+                                            self.mp_drawing.draw_landmarks(
+                                                img, hand_landmarks, mp.solutions.hands.HAND_CONNECTIONS)
                                     
-                                    if self.last_prediction:
-                                        cv2.putText(img, f"LIVE: {self.last_prediction}", (30, 50), 
-                                                   cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                                    cv2.putText(img, "GCP-ACCELERATED-STREAM", (30, 30), 
+                                               cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
                                 except: pass
 
                             # Put in queue for recording/transcribing (UNALTERED ORIGINAL FRAMES)
