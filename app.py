@@ -225,16 +225,18 @@ st.set_page_config(
 # ==============================================================================
 # --- MANDATORY SESSION STATE BENCHMARK (CRITICAL FOR THREAD STABILITY) ---
 # ==============================================================================
-if "live_performance_mode" not in st.session_state:
-    st.session_state.live_performance_mode = "⚡ High Performance (No Overlay)"
-if 'shared_sentence' not in st.session_state:
-    st.session_state['shared_sentence'] = []
-if "recording" not in st.session_state:
-    st.session_state.recording = False
-if "recorded_frames" not in st.session_state:
-    st.session_state.recorded_frames = []
-if "last_results" not in st.session_state:
-    st.session_state['last_results'] = {}
+# 1. Component Keys
+for key, val in {
+    "live_performance_mode": "⚡ High Performance (No Overlay)",
+    "shared_sentence": [],
+    "recording": False,
+    "recorded_frames": [],
+    "last_results": {},
+    "live_mode_active": False,
+    "avatar_flip_val": False
+}.items():
+    if key not in st.session_state:
+        st.session_state[key] = val
 # ==============================================================================
 
 # Premium UI Styling
@@ -355,7 +357,7 @@ def main():
         st.markdown("[📄 Management Presentation](https://github.com/eltaweelac/streamlit_slt_app_v2_stable_v3_stable/blob/main/KONECTA_SLT_PRESENTATION.md)")
         st.caption("Includes WebRTC/TURN & Roadmap.")
     
-    flip_opt = st.sidebar.checkbox("Flip Avatar (180°)", value=False)
+    flip_opt = st.sidebar.checkbox("Flip Avatar (180°)", key="avatar_flip_val")
     
     if st.sidebar.button("🧠 Force Retrain Engine"):
         with st.sidebar.status("🧠 Retraining with Expanded Vocab...", expanded=True) as status:
@@ -952,7 +954,7 @@ def main():
             st.info("💡 **Tip:** For video analysis, use the file uploader below or run `standalone_live.py` for desktop mode.")
         
         else:  # Live Stream mode
-            live_mode = st.toggle("⚡ Enable Live Streaming", value=False)
+            live_mode = st.toggle("⚡ Enable Live Streaming", key="live_mode_active")
             
             if live_mode:
                 st.subheader("🌐 Live Hybrid Recording")
@@ -1034,13 +1036,8 @@ def main():
                         {"urls": ["stun:stun3.l.google.com:19302"]},
                         {"urls": ["stun:stun4.l.google.com:19302"]},
                         {"urls": ["stun:stun.services.mozilla.com"]},
-                        {"urls": ["stun:stun.ekiga.net"]},
-                        {"urls": ["stun:stun.ideasip.com"]},
-                        {"urls": ["stun:stun.schlund.de"]},
-                        {"urls": ["stun:stun.voiparound.com"]},
-                        {"urls": ["stun:stun.voipbuster.com"]},
-                        {"urls": ["stun:stun.voipstunt.com"]},
-                        {"urls": ["stun:stun.voxgratia.org"]},
+                        {"urls": ["stun:stun.l.google.com:19305"]},
+                        {"urls": ["stun:global.stun.twilio.com:3478"]},
                     ]
                     
                     # If user provides TURN credentials in secrets, prioritize them
@@ -1055,7 +1052,7 @@ def main():
                     current_perf_mode = st.session_state.get('live_performance_mode', "⚡ High Performance (No Overlay)")
                     
                     webrtc_ctx = webrtc_streamer(
-                        key="slt-live-radical",
+                        key="slt-live-radical-v2",
                         mode=WebRtcMode.SENDRECV,
                         rtc_configuration=RTCConfiguration({"iceServers": ice_servers}),
                         video_processor_factory=lambda: SignProcessor(current_perf_mode),
