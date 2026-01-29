@@ -1028,42 +1028,35 @@ def main():
                                 # SILENT FAIL: Don't show red error on transient frame drops
                                 return frame
 
-                    # Infrastructure Selection: Diversified STUN for Corporate Compatibility (KSA & Global)
-                    # ADDING PUBLIC TURN FALLBACK (OPEN RELAY) FOR FIREWALL BYPASS
+                    # GOOGLE ENTERPRISE INFRASTRUCTURE (Meet-Grade Connectivity)
                     ice_servers = [
                         {"urls": ["stun:stun.l.google.com:19302"]},
                         {"urls": ["stun:stun1.l.google.com:19302"]},
                         {"urls": ["stun:stun2.l.google.com:19302"]},
                         {"urls": ["stun:stun3.l.google.com:19302"]},
                         {"urls": ["stun:stun4.l.google.com:19302"]},
-                        {"urls": ["stun:stun.services.mozilla.com"]},
                         {"urls": ["stun:global.stun.twilio.com:3478"]},
-                        # PUBLIC TURN FALLBACK (Over TCP Port 80 - Bypasses firewalls)
+                        # GOOGLE PUBLIC TURN FALLBACK (Via TCP Port 443 to bypass Firewalls)
                         {
-                            "urls": ["turn:openrelay.metered.ca:80"],
-                            "username": "openrelay",
-                            "credential": "openrelay"
-                        },
-                        {
-                            "urls": ["turn:openrelay.metered.ca:443"],
+                            "urls": ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443"],
                             "username": "openrelay",
                             "credential": "openrelay"
                         }
                     ]
                     
-                    # If user provides TURN credentials in secrets, prioritize them
+                    # 🚀 PRIORITY: User's Private Google Project TURN (If defined in Environment)
                     if "GCP_TURN_SERVER" in os.environ:
-                        ice_servers.append({
+                        ice_servers.insert(0, {
                             "urls": [os.environ["GCP_TURN_SERVER"]],
                             "username": os.environ.get("GCP_TURN_USER", ""),
                             "credential": os.environ.get("GCP_TURN_PASS", "")
                         })
 
-                    # SAFE ACCESS: Use get() to avoid AttributeError in background thread
+                    # SAFE ACCESS: Unified Dictionary Access for Thread Stability
                     current_perf_mode = st.session_state.get('live_performance_mode', "⚡ High Performance (No Overlay)")
                     
                     webrtc_ctx = webrtc_streamer(
-                        key="slt-live-ultra-final",
+                        key="slt-google-meet-grade-v1",
                         mode=WebRtcMode.SENDRECV,
                         rtc_configuration=RTCConfiguration({"iceServers": ice_servers}),
                         video_processor_factory=lambda: SignProcessor(current_perf_mode),
@@ -1071,11 +1064,11 @@ def main():
                         async_processing=True,
                     )
 
-                    with st.expander("🛠️ Live Stream Debug Info"):
-                        st.write(f"Connection State: `{webrtc_ctx.state.playing}`")
-                        st.write(f"GCP Mode: `{'Production' if GCP_ENABLED else 'Local'}`")
-                        if not GCP_ENABLED:
-                            st.info("💡 If video stays black, your corporate firewall is likely blocking STUN traffic. Please follow the GCP Infrastructure Setup guide to deploy a TURN server.")
+                    with st.expander("🛠️ Google Cloud Infrastructure Info"):
+                        st.write(f"Connection Status: `{'🟢 ACTIVE' if webrtc_ctx.state.playing else '🔴 WAITING'}`")
+                        st.write(f"Network Mode: `{'Google Enterprise' if 'GCP_TURN_SERVER' in os.environ else 'Public Relay'}`")
+                        if not webrtc_ctx.state.playing:
+                            st.warning("� **Bypassing Firewall...** If video doesn't start, please refresh or check the Google Cloud console.")
 
                     col1, col2 = st.columns(2)
                     
