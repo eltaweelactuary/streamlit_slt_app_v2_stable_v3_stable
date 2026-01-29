@@ -1089,8 +1089,9 @@ def main():
                                 st.session_state['recording'] = False
                                 # Drain queue into session state with progress
                                 with st.status("📥 Fetching frames...", expanded=False) as status:
-                                    while not webrtc_ctx.video_processor.frame_queue.empty():
-                                        st.session_state['recorded_frames'].append(webrtc_ctx.video_processor.frame_queue.get())
+                                    if webrtc_ctx.video_processor:
+                                        while not webrtc_ctx.video_processor.frame_queue.empty():
+                                            st.session_state['recorded_frames'].append(webrtc_ctx.video_processor.frame_queue.get())
                                     status.update(label=f"✅ {len(st.session_state['recorded_frames'])} frames captured", state="complete")
                                 
                                 if len(st.session_state['recorded_frames']) > 10:
@@ -1126,11 +1127,7 @@ def main():
                     
                     if st.session_state.get('recording'):
                         st.toast("🎥 Recording in progress...")
-                        # In a real app we'd drain the queue periodically to avoid OOM
-                        # For POC we drain when stopping.
-                        if webrtc_ctx.video_processor:
-                             while not webrtc_ctx.video_processor.frame_queue.empty():
-                                st.session_state['recorded_frames'].append(webrtc_ctx.video_processor.frame_queue.get())
+                        # REMOVED BACKGROUND DRAIN TO PREVENT GLITCHES
 
                 except Exception as e:
                     st.error(f"❌ Live Stream Error: {e}")
