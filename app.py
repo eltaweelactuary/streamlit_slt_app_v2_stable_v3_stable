@@ -222,9 +222,6 @@ st.set_page_config(
     layout="wide"
 )
 
-# ==============================================================================
-# --- MANDATORY SESSION STATE BENCHMARK (CRITICAL FOR THREAD STABILITY) ---
-# ==============================================================================
 # 1. Component Keys (Dictionary Access Preferred for Thread Safety)
 for key, val in {
     "live_performance_mode": "⚡ High Performance (No Overlay)",
@@ -233,7 +230,8 @@ for key, val in {
     "recorded_frames": [],
     "last_results": {},
     "live_mode_active": False,
-    "avatar_flip_val": False
+    "avatar_flip_val": False,
+    "stream_reconnect_sid": 0
 }.items():
     if key not in st.session_state:
         st.session_state[key] = val
@@ -1031,25 +1029,29 @@ def main():
                                 return frame
 
                     # GOOGLE ENTERPRISE INFRASTRUCTURE (Meet-Grade Connectivity)
+                    # Forcing TCP transport (?transport=tcp) to bypass corporate UDP blocks
                     ice_servers = [
                         {"urls": ["stun:stun.l.google.com:19302"]},
                         {"urls": ["stun:stun1.l.google.com:19302"]},
-                        {"urls": ["stun:stun2.l.google.com:19302"]},
-                        {"urls": ["stun:stun3.l.google.com:19302"]},
-                        {"urls": ["stun:stun4.l.google.com:19302"]},
+                        {"urls": ["stun:stun.services.mozilla.com"]},
                         {"urls": ["stun:global.stun.twilio.com:3478"]},
-                        # GOOGLE PUBLIC TURN FALLBACK (Via TCP Port 443 to bypass Firewalls)
+                        # PUBLIC TURN FALLBACK (TCP Mode - Essential for Corporate Bypass)
                         {
-                            "urls": ["turn:openrelay.metered.ca:80", "turn:openrelay.metered.ca:443"],
+                            "urls": [
+                                "turn:openrelay.metered.ca:80?transport=tcp", 
+                                "turn:openrelay.metered.ca:443?transport=tcp",
+                                "turn:openrelay.metered.ca:443?transport=udp"
+                            ],
                             "username": "openrelay",
                             "credential": "openrelay"
                         }
                     ]
                     
-                    # 🚀 PRIORITY: User's Private Google Project TURN (If defined in Environment)
+                    # 🚀 PRIORITY: User's Private Google Project TURN
                     if "GCP_TURN_SERVER" in os.environ:
+                        base_url = os.environ["GCP_TURN_SERVER"]
                         ice_servers.insert(0, {
-                            "urls": [os.environ["GCP_TURN_SERVER"]],
+                            "urls": [f"{base_url}?transport=tcp", f"{base_url}?transport=udp"],
                             "username": os.environ.get("GCP_TURN_USER", ""),
                             "credential": os.environ.get("GCP_TURN_PASS", "")
                         })
@@ -1057,8 +1059,11 @@ def main():
                     # SAFE ACCESS: Unified Dictionary Access for Thread Stability
                     current_perf_mode = st.session_state.get('live_performance_mode', "⚡ High Performance (No Overlay)")
                     
+                    # Dynamic Key Rotation to prevent hanging connections
+                    stream_key = f"slt-google-meet-infra-{st.session_state.get('stream_reconnect_sid', 0)}"
+                    
                     webrtc_ctx = webrtc_streamer(
-                        key="slt-google-meet-grade-v1",
+                        key=stream_key,
                         mode=WebRtcMode.SENDRECV,
                         rtc_configuration=RTCConfiguration({"iceServers": ice_servers}),
                         video_processor_factory=lambda: SignProcessor(current_perf_mode),
@@ -1070,7 +1075,10 @@ def main():
                         st.write(f"Connection Status: `{'🟢 ACTIVE' if webrtc_ctx.state.playing else '🔴 WAITING'}`")
                         st.write(f"Network Mode: `{'Google Enterprise' if 'GCP_TURN_SERVER' in os.environ else 'Public Relay'}`")
                         if not webrtc_ctx.state.playing:
-                            st.warning("� **Bypassing Firewall...** If video doesn't start, please refresh or check the Google Cloud console.")
+                            if st.button("🔄 Force Reconnect & Bypass", key="btn_force_reconnect"):
+                                st.session_state['stream_reconnect_sid'] += 1
+                                st.rerun()
+                            st.warning("📡 **Bypassing Firewall...** If video doesn't start, click 'Force Reconnect' to try a different port.")
 
                     col1, col2 = st.columns(2)
                     
