@@ -18,8 +18,7 @@ import json
 import queue
 import mediapipe as mp
 import av
-from sign_language_core import SignLanguageCore
-from avatar_renderer import DigitalHumanRenderer
+from sign_language_core import SignLanguageCore, DigitalHumanRenderer
 
 # ==============================================================================
 # --- SYSTEM & INFRASTRUCTURE INITIALIZATION ---
