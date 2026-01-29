@@ -222,6 +222,21 @@ st.set_page_config(
     layout="wide"
 )
 
+# ==============================================================================
+# --- MANDATORY SESSION STATE BENCHMARK (CRITICAL FOR THREAD STABILITY) ---
+# ==============================================================================
+if "live_performance_mode" not in st.session_state:
+    st.session_state.live_performance_mode = "⚡ High Performance (No Overlay)"
+if 'shared_sentence' not in st.session_state:
+    st.session_state['shared_sentence'] = []
+if "recording" not in st.session_state:
+    st.session_state.recording = False
+if "recorded_frames" not in st.session_state:
+    st.session_state.recorded_frames = []
+if "last_results" not in st.session_state:
+    st.session_state['last_results'] = {}
+# ==============================================================================
+
 # Premium UI Styling
 st.markdown("""
 <style>
@@ -302,16 +317,6 @@ def load_or_train_core(core, translator):
     return False
 
 def main():
-    # --- GLOBAL SESSION STATE INITIALIZATION ---
-    if "live_performance_mode" not in st.session_state:
-        st.session_state.live_performance_mode = "⚡ High Performance (No Overlay)"
-    if 'shared_sentence' not in st.session_state:
-        st.session_state['shared_sentence'] = []
-    if "recording" not in st.session_state:
-        st.session_state.recording = False
-    if "recorded_frames" not in st.session_state:
-        st.session_state.recorded_frames = []
-    
     # App UI Initialization
     
     st.title("🤟 Sign Language Translator")
