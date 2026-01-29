@@ -964,9 +964,15 @@ def main():
                     import queue
 
                     st.sidebar.markdown("---")
-                    st.session_state.live_performance_mode = st.sidebar.radio(
+                    # Use index to sync radio with state value safely
+                    options = ["🧪 AI Intelligent (Live Processing)", "⚡ High Performance (No Overlay)"]
+                    current_idx = options.index(st.session_state.get('live_performance_mode', options[1]))
+                    
+                    st.sidebar.radio(
                         "🎭 Live Analysis Mode",
-                        ["🧪 AI Intelligent (Live Processing)", "⚡ High Performance (No Overlay)"],
+                        options,
+                        index=current_idx,
+                        key="live_performance_mode",
                         help="Intelligent mode runs landmark extraction in real-time but may lag on slow CPUs."
                     )
                     
@@ -1024,8 +1030,17 @@ def main():
                     ice_servers = [
                         {"urls": ["stun:stun.l.google.com:19302"]},
                         {"urls": ["stun:stun1.l.google.com:19302"]},
+                        {"urls": ["stun:stun2.l.google.com:19302"]},
+                        {"urls": ["stun:stun3.l.google.com:19302"]},
+                        {"urls": ["stun:stun4.l.google.com:19302"]},
                         {"urls": ["stun:stun.services.mozilla.com"]},
-                        {"urls": ["stun:stun.l.google.com:19305"]},
+                        {"urls": ["stun:stun.ekiga.net"]},
+                        {"urls": ["stun:stun.ideasip.com"]},
+                        {"urls": ["stun:stun.schlund.de"]},
+                        {"urls": ["stun:stun.voiparound.com"]},
+                        {"urls": ["stun:stun.voipbuster.com"]},
+                        {"urls": ["stun:stun.voipstunt.com"]},
+                        {"urls": ["stun:stun.voxgratia.org"]},
                     ]
                     
                     # If user provides TURN credentials in secrets, prioritize them
@@ -1036,11 +1051,14 @@ def main():
                             "credential": os.environ.get("GCP_TURN_PASS", "")
                         })
 
+                    # SAFE ACCESS: Use get() to avoid AttributeError in background thread
+                    current_perf_mode = st.session_state.get('live_performance_mode', "⚡ High Performance (No Overlay)")
+                    
                     webrtc_ctx = webrtc_streamer(
                         key="slt-live-radical",
                         mode=WebRtcMode.SENDRECV,
                         rtc_configuration=RTCConfiguration({"iceServers": ice_servers}),
-                        video_processor_factory=lambda: SignProcessor(st.session_state.live_performance_mode),
+                        video_processor_factory=lambda: SignProcessor(current_perf_mode),
                         media_stream_constraints={"video": True, "audio": False},
                         async_processing=True,
                     )
