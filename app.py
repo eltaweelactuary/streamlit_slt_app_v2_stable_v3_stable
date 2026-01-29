@@ -570,9 +570,9 @@ def main():
             
             with char_col2:
                 avatar_options = {
+                    "🎬 Konecta Elite (Studio)": "VRM1_Constraint_Twist_Sample.vrm",
                     "🤖 Konecta Neo (Standard)": "5084648674725325209.vrm",
-                    "🌟 Konecta Prime (High-Fidelity)": "4152045953412205614.vrm",
-                    "🎬 Konecta Elite (Studio)": "VRM1_Constraint_Twist_Sample.vrm"
+                    "🌟 Konecta Prime (High-Fidelity)": "4152045953412205614.vrm"
                 }
                 selected_avatar_name = st.selectbox("Select Digital Human:", list(avatar_options.keys()), index=0)
                 vrm_path = avatar_options[selected_avatar_name]
@@ -964,16 +964,11 @@ def main():
                     import queue
 
                     st.sidebar.markdown("---")
-                    # Use index to sync radio with state value safely
                     options = ["🧪 AI Intelligent (Live Processing)", "⚡ High Performance (No Overlay)"]
-                    # SAFE ACCESS: Always use dict-style to avoid AttributeError
-                    current_perf_mode_val = st.session_state.get('live_performance_mode', options[1])
-                    current_idx = options.index(current_perf_mode_val)
                     
                     st.sidebar.radio(
                         "🎭 Live Analysis Mode",
                         options,
-                        index=current_idx,
                         key="live_performance_mode",
                         help="Intelligent mode runs landmark extraction in real-time but may lag on slow CPUs."
                     )
@@ -985,6 +980,7 @@ def main():
                             self.frame_count = 0
                             try:
                                 import mediapipe as mp
+                                # Use HANDS only for ultra-fast live feedback (10x faster than Holistic)
                                 self.hands = mp.solutions.hands.Hands(
                                     static_image_mode=False,
                                     max_num_hands=2,
@@ -1101,18 +1097,18 @@ def main():
                                     with st.spinner("🧠 Analyzing Sign Sequence (This may take a moment)..."):
                                         # Save to temp file - BYPASS THE PATCHED WRITER to skip slow ffmpeg
                                         temp_vid = os.path.join(tempfile.gettempdir(), f"live_rec_{int(time.time())}.mp4")
-                                        h, w, _ = st.session_state.recorded_frames[0].shape
+                                        h, w, _ = st.session_state['recorded_frames'][0].shape
                                         # Use _orig_VideoWriter directly to skip the H.264 optimization (not needed for analysis)
                                         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
                                         out = _orig_VideoWriter(temp_vid, fourcc, 20.0, (w, h))
-                                        for f in st.session_state.recorded_frames:
+                                        for f in st.session_state['recorded_frames']:
                                             out.write(f)
                                         out.release()
                                         
                                         # Predict using the temporal engine
                                         labels, conf = core.predict_sentence(temp_vid)
                                         if labels:
-                                            st.session_state.live_label = " ".join(labels)
+                                            st.session_state['live_label'] = " ".join(labels)
                                             # Add to shared sentence
                                             for lbl in labels:
                                                 if not st.session_state['shared_sentence'] or st.session_state['shared_sentence'][-1] != lbl:
@@ -1123,15 +1119,18 @@ def main():
                                     st.warning("⚠️ Recording too short. Please capture at least 1 second of signing.")
                                 st.rerun()
 
-                    if "live_label" in st.session_state and st.session_state.live_label:
-                        st.success(f"🏆 Recognized: **{st.session_state.live_label}**")
+                    # SAFE ACCESS FOR DISPLAY
+                    current_live_label = st.session_state.get('live_label')
+                    if current_live_label:
+                        st.success(f"🏆 Recognized: **{current_live_label}**")
                     
-                    if st.session_state.recording:
+                    if st.session_state.get('recording'):
                         st.toast("🎥 Recording in progress...")
                         # In a real app we'd drain the queue periodically to avoid OOM
                         # For POC we drain when stopping.
-                        while webrtc_ctx.video_processor and not webrtc_ctx.video_processor.frame_queue.empty():
-                            st.session_state.recorded_frames.append(webrtc_ctx.video_processor.frame_queue.get())
+                        if webrtc_ctx.video_processor:
+                             while not webrtc_ctx.video_processor.frame_queue.empty():
+                                st.session_state['recorded_frames'].append(webrtc_ctx.video_processor.frame_queue.get())
 
                 except Exception as e:
                     st.error(f"❌ Live Stream Error: {e}")
