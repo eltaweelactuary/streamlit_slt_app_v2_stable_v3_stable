@@ -635,31 +635,27 @@ def main():
                         const scene = new THREE.Scene();
                         scene.background = new THREE.Color(0x0a0a12); 
                         const camera = new THREE.PerspectiveCamera(35, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
-                        camera.position.set(0, 1.3, 2.2); // Closer, more intimate "Portrait" view
-                        camera.lookAt(0, 1.3, 0);
+                        camera.position.set(0, 1.2, 2.5); // Unified stable view
+                        camera.lookAt(0, 1.2, 0);
 
                         const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
                         renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-                        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                        renderer.setPixelRatio(window.devicePixelRatio);
                         renderer.outputColorSpace = THREE.SRGBColorSpace; 
-                        renderer.toneMapping = THREE.LinearToneMapping;
-                        renderer.toneMappingExposure = 1.0;
+                        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                        renderer.toneMappingExposure = 1.1;
                         
-                        // --- CINEMATIC DIGITAL HUMAN LIGHTING ---
-                        const hemiLight = new THREE.HemisphereLight(0xabcfff, 0x111111, 0.4); // Cool skylight
+                        // --- ELITE STUDIO LIGHTING (STABLE) ---
+                        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.0);
                         scene.add(hemiLight);
 
-                        const mainLight = new THREE.DirectionalLight(0xffffff, 2.0); // Key Light (Warm)
-                        mainLight.position.set(2, 4, 3);
+                        const mainLight = new THREE.DirectionalLight(0xffffff, 1.5);
+                        mainLight.position.set(5, 5, 5);
                         scene.add(mainLight);
 
-                        const fillLight = new THREE.PointLight(0x0f9d58, 1.2, 5); // Brand Fill (Green tint)
-                        fillLight.position.set(-2, 1, 1);
+                        const fillLight = new THREE.PointLight(0x0f9d58, 0.8, 10);
+                        fillLight.position.set(-5, 2, 2);
                         scene.add(fillLight);
-
-                        const rimLight = new THREE.SpotLight(0xffffff, 4); // Rim Light (Defining the silhouette)
-                        rimLight.position.set(0, 5, -5);
-                        scene.add(rimLight);
 
                         document.getElementById('neural-overlay').style.display = 'block';
 
@@ -675,20 +671,8 @@ def main():
                                 vrm.scene.traverse(obj => {
                                     if (obj.isMesh) {
                                         obj.material.colorSpace = THREE.SRGBColorSpace;
-                                        // PBR UPGRADE: Convert basic materials to Digital Human Physical standards
-                                        const oldMat = obj.material;
-                                        obj.material = new THREE.MeshPhysicalMaterial({
-                                            map: oldMat.map,
-                                            color: oldMat.color,
-                                            skinning: true,
-                                            roughness: 0.4,
-                                            metalness: 0.1,
-                                            clearcoat: 0.2, // Skin moisture/sheen
-                                            clearcoatRoughness: 0.3,
-                                            reflectivity: 0.5,
-                                            sheen: 0.1, // Sub-surface scattering simulation
-                                            sheenColor: new THREE.Color(0xffaaaa) 
-                                        });
+                                        // Restore original premium shaders (MToon compatibility)
+                                        if (obj.material.transmission !== undefined) obj.material.transmission = 0;
                                     }
                                 });
                                 // Manual Flip Control
@@ -706,9 +690,8 @@ def main():
                         }
 
                         const clock = new THREE.Clock();
-                        // MOVEMENT STABILIZER (Google-MediaPipe Powered)
-                        // Higher value = more responsive, lower = more smooth
-                        const stabilizer = 0.25; 
+                        // STABLE ELITE STABILIZER
+                        const stabilizer = 0.08; 
                         
                         function solveBoneRotation(node, p_start, p_end, baseDir) {
                             if (!node || !p_start || !p_end) return;
@@ -750,7 +733,7 @@ def main():
                             forearm.quaternion.slerp(new THREE.Quaternion(), speed); 
                         }
 
-                        const fps = 24; // Precision handling @ 24fps
+                        const fps = 30; // Restore 30fps fluidity
                         const timePerFrame = 1.0 / fps;
                         let timeAccumulator = 0.0;
 
