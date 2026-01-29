@@ -16,10 +16,18 @@ import io
 import json
 
 # ==============================================================================
-# --- SYSTEM COMPATIBILITY LAYER: TRANSIENT STORAGE & PERMISSIONS ---
+# --- SYSTEM & INFRASTRUCTURE INITIALIZATION ---
 # ==============================================================================
+# 1. Path Redirection Layer (For Streamlit Cloud Write Support)
 WRITABLE_BASE = os.path.join(tempfile.gettempdir(), "slt_persistent_storage")
 APP_ROOT = os.path.abspath(os.getcwd()).replace("\\", "/")
+
+# 2. Google Cloud Platform (GCP) Credentials
+GCP_KEY_PATH = os.path.join(os.path.dirname(__file__), "service-account-key.json")
+GCP_ENABLED = False
+if os.path.exists(GCP_KEY_PATH):
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = GCP_KEY_PATH
+    GCP_ENABLED = True
 
 # Recovery: Capture absolute original functions once and preserve them in sys
 if not hasattr(sys, "_slt_orig"):
@@ -312,7 +320,19 @@ def main():
     
     # --- CLEAN UI ---
     st.sidebar.success("💎 **Rigging Standard:** Elite Studio v2.0")
+    
+    if GCP_ENABLED:
+        st.sidebar.markdown("✅ **GCP Production Mode:** Active")
+        st.sidebar.caption("Infrastructure linked via Service Account.")
+    else:
+        st.sidebar.warning("⚠️ **GCP Mode:** Local/Sandbox")
+    
     st.sidebar.info("🖥️ **Mode:** Forced Desktop (Computer View)")
+    
+    with st.sidebar.expander("🛠️ Final Infrastructure Doc"):
+        st.markdown("[📄 Management Presentation](https://github.com/eltaweelac/streamlit_slt_app_v2_stable_v3_stable/blob/main/KONECTA_SLT_PRESENTATION.md)")
+        st.caption("Includes WebRTC/TURN & Roadmap.")
+    
     flip_opt = st.sidebar.checkbox("Flip Avatar (180°)", value=False)
     
     if st.sidebar.button("🧠 Force Retrain Engine"):
@@ -911,19 +931,64 @@ def main():
                     class SignProcessor:
                         def __init__(self):
                             self.frame_queue = queue.Queue()
+                            # AI Core shared with main app
+                            try:
+                                import mediapipe as mp
+                                self.holistic = mp.solutions.holistic.Holistic(
+                                    min_detection_confidence=0.5, 
+                                    min_tracking_confidence=0.5
+                                )
+                                self.mp_drawing = mp.solutions.drawing_utils
+                            except:
+                                self.holistic = None
+                            
+                            self.last_prediction = ""
+                            self.last_confidence = 0.0
 
                         def recv(self, frame):
                             img = frame.to_ndarray(format="bgr24")
-                            # Always put in queue for the main thread to handle if recording
+                            
+                            # Real-time Processing Layer (Production Grade)
+                            if self.holistic:
+                                try:
+                                    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                                    results = self.holistic.process(img_rgb)
+                                    
+                                    # Draw minimal landmarks for feedback
+                                    if results.left_hand_landmarks:
+                                        self.mp_drawing.draw_landmarks(img, results.left_hand_landmarks, mp.solutions.holistic.HAND_CONNECTIONS)
+                                    if results.right_hand_landmarks:
+                                        self.mp_drawing.draw_landmarks(img, results.right_hand_landmarks, mp.solutions.holistic.HAND_CONNECTIONS)
+                                    
+                                    # Optional: Frame-by-frame text overlay
+                                    # This shows the "Live Intelligence" at work
+                                    if self.last_prediction:
+                                        cv2.putText(img, f"LIVE: {self.last_prediction}", (30, 50), 
+                                                   cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                                except: pass
+
+                            # Put in queue for recording/transcribing
                             self.frame_queue.put(img)
                             return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+                    # Infrastructure Selection: Production (GCP) vs Sandbox
+                    ice_servers = [{"urls": ["stun:stun.l.google.com:19302"]}]
+                    
+                    # If user provides TURN credentials in secrets, prioritize them
+                    if "GCP_TURN_SERVER" in os.environ:
+                        ice_servers.append({
+                            "urls": [os.environ["GCP_TURN_SERVER"]],
+                            "username": os.environ.get("GCP_TURN_USER", ""),
+                            "credential": os.environ.get("GCP_TURN_PASS", "")
+                        })
+                    elif GCP_ENABLED:
+                        # Placeholder: Suggesting the use of a TURN server for professional GCP deployments
+                        pass
 
                     webrtc_ctx = webrtc_streamer(
                         key="slt-live-radical",
                         mode=WebRtcMode.SENDRECV,
-                        rtc_configuration=RTCConfiguration(
-                            {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
-                        ),
+                        rtc_configuration=RTCConfiguration({"iceServers": ice_servers}),
                         video_processor_factory=SignProcessor,
                         media_stream_constraints={"video": True, "audio": False},
                         async_processing=True,

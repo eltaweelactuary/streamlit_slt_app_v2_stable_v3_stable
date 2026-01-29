@@ -37,3 +37,6 @@ app_internal_data/
 
 # But we WANT to commit the classifier if it exists for faster startup
 # !psl_classifier.pkl
+
+# Security: Never commit GCP Service Account Keys
+service-account-key.json
