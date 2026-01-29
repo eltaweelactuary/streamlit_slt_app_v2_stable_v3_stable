@@ -17,7 +17,7 @@ Follow these steps in your terminal (ensure you have [Google Cloud SDK](https://
 ### Step 1: Initialize Local Variables
 Set your project ID for easy copying:
 ```powershell
-$PROJECT_ID = "YOUR_GCP_PROJECT_ID"
+$PROJECT_ID = "eg-konecta-sandbox"
 ```
 
 ### Step 2: Authenticate with Google Cloud
