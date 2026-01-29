@@ -582,18 +582,28 @@ def main():
                     <html><head>
                     <style>
                         * { margin:0; padding:0; box-sizing:border-box; }
-                        body { background: linear-gradient(135deg, #0a0a12, #16213e); display:flex; justify-content:center; align-items:center; min-height:100vh; font-family:'Inter',sans-serif; color:#fff; }
-                        #canvas { width:100%; height:450px; border-radius:12px; }
-                        .hud { display:flex; justify-content:space-around; margin-top:10px; padding:10px; background:rgba(255,255,255,0.05); border-radius:8px; }
+                        body { background: linear-gradient(135deg, #05050a, #101018); display:flex; justify-content:center; align-items:center; min-height:100vh; font-family:'Inter',sans-serif; color:#fff; overflow:hidden; }
+                        #canvas { width:100%; height:450px; border-radius:12px; box-shadow: 0 0 30px rgba(15, 157, 88, 0.1); }
+                        .hud { display:flex; justify-content:space-around; margin-top:10px; padding:10px; background:rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius:8px; backdrop-filter: blur(5px); }
                         .hud-item { text-align:center; }
-                        .hud-label { font-size:0.7rem; color:#aaa; text-transform:uppercase; }
-                        .hud-value { font-size:1.1rem; font-weight:bold; color:#0f9d58; }
+                        .hud-label { font-size:0.65rem; color:#888; text-transform:uppercase; letter-spacing: 1px; }
+                        .hud-value { font-size:1.0rem; font-weight:bold; color:#0f9d58; text-shadow: 0 0 10px rgba(15,157,88,0.5); }
+                        #neural-overlay { 
+                            position: absolute; top:0; left:0; width:100%; height:100%; 
+                            pointer-events:none; background: linear-gradient(90deg, transparent, rgba(15,157,88,0.05), transparent);
+                            background-size: 200% 100%; animation: scan 3s infinite linear; display:none;
+                        }
+                        @keyframes scan { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+                        .production-tag { position:absolute; top:20px; right:20px; background:rgba(15,157,88,0.9); padding:4px 8px; border-radius:4px; font-size:0.6rem; font-weight:bold; letter-spacing:1px; }
                     </style>
                     </head><body>
-                    <div style="width:100%; max-width:700px; padding:10px;">
+                    <div style="position:relative; width:100%; max-width:700px; padding:10px; background:rgba(255,255,255,0.02); border-radius:16px; border:1px solid rgba(255,255,255,0.05);">
+                        <div id="neural-overlay"></div>
+                        <div class="production-tag">NEURAL SYNTHESIS ACTIVE</div>
                         <canvas id="canvas"></canvas>
                         <div class="hud">
-                            <div class="hud-item"><div class="hud-label">Status</div><div class="hud-value" id="status">Loading...</div></div>
+                            <div class="hud-item"><div class="hud-label">Engine</div><div class="hud-value">GCP-Neural-v2</div></div>
+                            <div class="hud-item"><div class="hud-label">Status</div><div class="hud-value" id="status">Synthesizing...</div></div>
                             <div class="hud-item"><div class="hud-label">Frame</div><div class="hud-value" id="frame">0/VAR_DNA_LEN</div></div>
                             <div class="hud-item"><div class="hud-label">Words</div><div class="hud-value">VAR_WORDS</div></div>
                         </div>
@@ -624,14 +634,26 @@ def main():
                         renderer.setSize(canvas.clientWidth, canvas.clientHeight);
                         renderer.setPixelRatio(window.devicePixelRatio);
                         renderer.outputColorSpace = THREE.SRGBColorSpace; 
+                        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                        renderer.toneMappingExposure = 1.2;
                         
-                        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.5);
-                        hemiLight.position.set(0, 20, 0);
+                        // PROFESSIONAL 3-POINT LIGHTING + RIM LIGHT
+                        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6);
                         scene.add(hemiLight);
 
-                        const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-                        dirLight.position.set(2, 5, 2);
-                        scene.add(dirLight);
+                        const mainLight = new THREE.DirectionalLight(0xffffff, 1.5); // Key
+                        mainLight.position.set(5, 5, 5);
+                        scene.add(mainLight);
+
+                        const fillLight = new THREE.PointLight(0x0f9d58, 0.8, 10); // Brand Fill
+                        fillLight.position.set(-5, 2, 2);
+                        scene.add(fillLight);
+
+                        const rimLight = new THREE.SpotLight(0xffffff, 2); // Rim for Neural Look
+                        rimLight.position.set(0, 5, -5);
+                        scene.add(rimLight);
+
+                        document.getElementById('neural-overlay').style.display = 'block';
 
                         const loader = new GLTFLoader();
                         loader.register(p => new VRMLoaderPlugin(p));
