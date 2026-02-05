@@ -10,6 +10,17 @@ from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
 import json
+from starlette.middleware.base import BaseHTTPMiddleware
+
+# Performance Middleware
+class LoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        start_time = time.time()
+        response = await call_next(request)
+        process_time = time.time() - start_time
+        response.headers["X-Process-Time"] = str(process_time)
+        print(f"⏱️ Request: {request.url.path} | Time: {process_time:.4f}s")
+        return response
 
 # Import the core engine
 try:
@@ -18,6 +29,7 @@ except ImportError:
     from core import SignLanguageCore, DigitalHumanRenderer
 
 app = FastAPI(title="Konecta SLT Enterprise API")
+app.add_middleware(LoggingMiddleware)
 
 # Initialize Core Engine
 WRITABLE_BASE = os.path.join(tempfile.gettempdir(), "slt_persistent_storage")
