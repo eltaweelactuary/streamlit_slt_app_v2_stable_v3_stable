@@ -12,7 +12,10 @@ import uvicorn
 import json
 
 # Import the core engine
-from sign_language_core import SignLanguageCore, DigitalHumanRenderer
+try:
+    from .core import SignLanguageCore, DigitalHumanRenderer
+except ImportError:
+    from core import SignLanguageCore, DigitalHumanRenderer
 
 app = FastAPI(title="Konecta SLT Enterprise API")
 
@@ -29,15 +32,17 @@ if not core.load_core():
     pass
 
 # Mount static files for the frontend
-os.makedirs("static", exist_ok=True)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+static_dir = os.path.join(os.path.dirname(__file__), "..", "static")
+os.makedirs(static_dir, exist_ok=True)
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 class TranslateRequest(BaseModel):
     text: str
 
 @app.get("/")
 async def read_index():
-    return FileResponse('static/index.html')
+    index_path = os.path.join(os.path.dirname(__file__), "..", "static", "index.html")
+    return FileResponse(index_path)
 
 @app.post("/api/predict")
 async def predict_video(file: UploadFile = File(...)):

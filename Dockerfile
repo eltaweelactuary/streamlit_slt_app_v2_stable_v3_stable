@@ -25,4 +25,4 @@ ENV PORT=8080
 ENV PYTHONUNBUFFERED=1
 
 # Run the application
-CMD ["python", "main.py"]
+CMD ["python", "backend/server.py"]

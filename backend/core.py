@@ -38,6 +38,11 @@ class SignLanguageCore:
             self.models_dir.mkdir(parents=True, exist_ok=True)
         except:
             pass
+
+        # Check for pre-trained model in assets
+        assets_model = Path(__file__).parent.parent / "assets" / "psl_classifier.pkl"
+        if assets_model.exists():
+             self.model_path = assets_model
         
         # MediaPipe Setup
         self.mp_holistic = mp.solutions.holistic
@@ -446,7 +451,8 @@ class DigitalHumanRenderer:
 
     def _extract_user_face(self):
         """Extracts and crops the user's face from user_profile.png if available"""
-        path = os.path.join(os.path.dirname(__file__), "user_profile.png")
+        # Look for user profile in assets
+        path = os.path.join(os.path.dirname(__file__), "..", "assets", "user_profile.png")
         if not os.path.exists(path): return None
         try:
             img = cv2.imread(path)
